@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>서해고 활동알리미</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one phone-width column, bottom tab bar, bottom sheets for detail/settings. Sea-blue school palette. */
+:root{
+  --bg:#F3F7F9; --surface:#FFFFFF; --ink:#0E2230; --muted:#5B6F7D; --line:#DCE6EC;
+  --sea:#0B6E8A; --sea-ink:#FFFFFF; --sea-soft:#E1F0F5;
+  --hot:#D9480F; --hot-soft:#FDEBE3; --warm:#B7791F; --warm-soft:#FBF1DD;
+  --shadow:0 1px 2px rgba(14,34,48,.06),0 4px 14px rgba(14,34,48,.06);
+  --f-display:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A161D; --surface:#11222C; --ink:#E5EEF2; --muted:#93A8B5; --line:#21384A;
+  --sea:#4DB3D0; --sea-ink:#06202A; --sea-soft:#14384A;
+  --hot:#FF8A5B; --hot-soft:#3A2018; --warm:#E9B65A; --warm-soft:#33280F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A161D; --surface:#11222C; --ink:#E5EEF2; --muted:#93A8B5; --line:#21384A;
+  --sea:#4DB3D0; --sea-ink:#06202A; --sea-soft:#14384A;
+  --hot:#FF8A5B; --hot-soft:#3A2018; --warm:#E9B65A; --warm-soft:#33280F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25); color-scheme:dark}
+
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,summary:focus-visible,label:focus-within{outline:2px solid var(--sea);outline-offset:2px}
+.app{max-width:520px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px calc(96px + env(safe-area-inset-bottom,0px))}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:4px 14px}
+.logo{font-family:var(--f-display);font-size:24px;letter-spacing:.01em;line-height:1.1;margin:0}
+.logo b{color:var(--sea);font-weight:400}
+.who{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+.who svg{width:14px;height:14px}
+.demo-note{font-size:12px;color:var(--muted);margin:0 0 14px}
+
+/* sections */
+h2.sec{font-size:17px;font-weight:700;margin:22px 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:8px;text-wrap:balance}
+h2.sec small{font-size:12px;font-weight:500;color:var(--muted)}
+.list{display:grid;gap:10px}
+.strip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;margin-inline:-4px;padding-inline:4px}
+.strip::-webkit-scrollbar{height:0}
+
+/* cards */
+.card{display:grid;gap:6px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);min-width:0}
+.card:hover{border-color:var(--sea)}
+.card.mini{flex:0 0 76%;max-width:300px;scroll-snap-align:start;border-color:var(--hot);background:linear-gradient(var(--hot-soft),var(--surface) 70%)}
+.card.off{opacity:.55}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.cat{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dday{margin-left:auto;font-family:var(--f-mono);font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--sea-soft);color:var(--sea);font-variant-numeric:tabular-nums}
+.dday.warm{background:var(--warm-soft);color:var(--warm)}
+.dday.hot{background:var(--hot);color:#fff}
+.dday.done{background:var(--line);color:var(--muted)}
+.tag{font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;letter-spacing:.02em}
+.tag.new{background:var(--sea);color:var(--sea-ink)}
+.tag.me{background:var(--sea-soft);color:var(--sea)}
+.tag.no{background:var(--line);color:var(--muted)}
+.title{font-size:16px;font-weight:700;line-height:1.35;margin:0;text-wrap:balance}
+.hook{font-size:14px;color:var(--sea);font-weight:600;margin:0}
+.meta{font-size:12.5px;color:var(--muted);margin:0;overflow-wrap:anywhere}
+
+/* chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px}
+.chips::-webkit-scrollbar{height:0}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:13.5px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.wrapchips{display:flex;flex-wrap:wrap;gap:8px}
+
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:18px;text-align:center;color:var(--muted);font-size:14px}
+.linkbtn{background:none;border:0;padding:0;color:var(--sea);font-weight:600;font-size:13px;text-decoration:underline;text-underline-offset:3px}
+
+/* stats banner on home */
+.pulse{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.pulse div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.pulse b{display:block;font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2}
+.pulse span{font-size:12px;color:var(--muted)}
+
+/* AI tab */
+.lead{font-size:14px;color:var(--muted);margin:0 0 12px}
+textarea{width:100%;min-height:170px;resize:vertical;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);padding:12px;font:inherit;font-size:14px;line-height:1.6}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn.primary{background:var(--sea);border-color:var(--sea);color:var(--sea-ink);width:100%;justify-content:center;padding:14px;font-size:15.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn svg{width:16px;height:16px}
+.thumb{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin-bottom:10px}
+.thumb img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.status{font-size:14px;color:var(--muted);margin:10px 0 0;min-height:1.4em}
+.status.err{color:var(--hot)}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--sea);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+.result{margin-top:16px;display:grid;gap:12px}
+.compare{display:flex;align-items:center;gap:10px;background:var(--sea-soft);border-radius:12px;padding:12px 14px;font-size:13.5px}
+.compare b{font-family:var(--f-mono);font-size:17px;font-variant-numeric:tabular-nums}
+.compare .arrow{color:var(--sea);font-weight:700}
+
+/* detail / sheet */
+.scrim{position:fixed;inset:0;background:rgba(5,15,22,.45);z-index:40}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-height:88%;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+.sheet-in{max-width:520px;margin:0 auto;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:10px calc(20px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 4px}
+.sheet h3{font-size:20px;line-height:1.3;margin:0;text-wrap:balance}
+.callout{background:var(--sea-soft);border-radius:12px;padding:12px 14px}
+.callout small{display:block;font-size:12px;font-weight:700;color:var(--sea);letter-spacing:.02em;margin-bottom:2px}
+.callout p{margin:0;font-weight:600}
+dl.facts{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:0;font-size:14px}
+dl.facts dt{color:var(--muted);font-weight:600;white-space:nowrap}
+dl.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.lbl{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.03em;margin:0 0 6px}
+.hooks{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:13.5px}
+.hooks li{display:flex;gap:8px;align-items:baseline}
+.hooks li b{font-family:var(--f-mono);font-size:12px;color:var(--muted);flex:none;width:34px}
+.hooks li.mine{color:var(--sea);font-weight:600}
+details.raw{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+details.raw summary{cursor:pointer;font-weight:600;font-size:14px}
+details.raw pre{white-space:pre-wrap;font-family:var(--f-body);font-size:13px;color:var(--muted);margin:10px 0 0;line-height:1.6}
+.join{width:100%;justify-content:center;padding:14px;font-size:15.5px}
+.join[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:var(--sea-ink)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg .chip{justify-content:center}
+
+/* bottom nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+nav.tabs button{background:none;border:0;padding:9px 4px 10px;display:grid;justify-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted)}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-current="page"]{color:var(--sea)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:50;max-width:calc(100% - 32px)}
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1 class="logo">서해고 <b>활동알리미</b></h1>
+    <button class="who" id="whoBtn" type="button" aria-label="학년과 관심 분야 바꾸기">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+      <span id="whoLabel">2학년</span>
+    </button>
+  </header>
+
+  <main>
+    <section id="v-home"></section>
+    <section id="v-all" hidden></section>
+    <section id="v-ai" hidden>
+      <h2 class="sec" style="margin-top:6px">AI 게시물 정리</h2>
+      <p class="lead">공문이나 포스터 내용을 넣으면 AI가 분류하고, 핵심만 뽑고, 학년별 홍보 문구를 새로 써요.</p>
+      <textarea id="raw" placeholder="여기에 게시물 원문을 붙여넣으세요"></textarea>
+      <div class="thumb" id="thumb" hidden><img id="thumbImg" alt="올린 포스터 사진"><span id="thumbName"></span><button class="linkbtn" id="thumbX" type="button">빼기</button></div>
+      <div class="tools">
+        <button class="btn" id="exampleBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/></svg>예시 공문 넣기</button>
+        <label class="btn" id="photoBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>포스터 사진<input type="file" id="photo" accept="image/*" hidden></label>
+      </div>
+      <button class="btn primary" id="runBtn" type="button">AI로 정리하기</button>
+      <p class="status" id="status" aria-live="polite"></p>
+      <div class="result" id="result" hidden></div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabs" aria-label="메뉴">
+  <div class="in">
+    <button type="button" data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg>나에게 맞는</button>
+    <button type="button" data-tab="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>전체 활동</button>
+    <button type="button" data-tab="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>AI 정리</button>
+  </div>
+</nav>
+
+<div id="scrim" class="scrim" hidden></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" hidden><div class="sheet-in" id="sheetIn"></div></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* ---------- 기본 데이터 ---------- */
+const CATS = [
+  {id:'contest',  name:'대회·공모전', color:'#E8590C'},
+  {id:'career',   name:'진로·진학',   color:'#1C7ED6'},
+  {id:'class',    name:'방과후·특강', color:'#7950F2'},
+  {id:'volunteer',name:'봉사',        color:'#2F9E44'},
+  {id:'club',     name:'동아리',      color:'#D6336C'},
+  {id:'event',    name:'행사',        color:'#F59F00'},
+  {id:'support',  name:'장학·지원',   color:'#0CA678'},
+  {id:'schedule', name:'학교 일정',   color:'#5C7080'},
+];
+const catOf = id => CATS.find(c => c.id === id) || CATS[5];
+
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const addDays = n => { const d = new Date(TODAY); d.setDate(d.getDate()+n); return d; };
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const kday = d => `${d.getMonth()+1}월 ${d.getDate()}일(${'일월화수목금토'[d.getDay()]})`;
+const D = n => kday(addDays(n));
+const nextSat = (min) => { let n = min; while (addDays(n).getDay() !== 6) n++; return n; };
+const SAT = nextSat(8);
+
+/* ---------- 실제 서해고 데이터 (2026-11-03 수집) ----------
+   출처: 서해고 홈페이지 가정통신문·열린마당 공지사항(2026.3~11, 239건) 중 학생 참여 활동,
+         서해고 10~12월 학사일정표, 교육부·대교협 공통 입시 일정.
+   deadline = 신청 마감일(YYYY-MM-DD). 학교 일정·입시 일정은 그날 날짜. 마감일을 알 수 없으면 null(상시). */
+const URL_OF = (mi, bbs, id) => `https://seohae-h.goesh.kr/seohae-h/na/ntt/selectNttInfo.do?mi=${mi}&bbsId=${bbs}&nttSn=${id}`;
+const G = (id) => URL_OF(5354, 3467, id);   // 가정통신문
+const N = (id) => URL_OF(5353, 3466, id);   // 열린마당 공지사항
+
+const ITEMS = [
+  /* ===== 지금 참여할 수 있는 활동 ===== */
+  { id:'s537821', cat:'class', title:'학생선택이음과정', grades:[1,2], deadline:'2026-11-10',
+    summary:'대학·전문기관 연계 특강, 실험·토론·작품 제작 수업 (수강 신청은 9/30 마감)',
+    what:'대학·전문기관 연계 특강, 실험 실습, 토론, 작품 제작', when:'10/27·11/3·11/10 화요일 15:00부터', where:'교내 (과정별 상이)', who:'1·2학년 중 수강 신청한 학생', how:'수강 신청은 9/30에 마감, 신청자는 남은 회차 참여',
+    hooks:{1:'남은 수업 2번, 끝까지 참여하면 기록이 남아요.',2:'남은 2회차, 탐구 활동으로 마무리해요.'},
+    url:G(537821), views:82, posted:'2026-10-29' },
+  { id:'s537385', cat:'volunteer', title:'기브미좋아 물품 기부 캠페인', grades:[1,2,3], deadline:null,
+    summary:'안 쓰는 물건을 아름다운가게에 기부하는 학생자치회 캠페인',
+    what:'가정에서 안 쓰는 물품 기부 (아름다운가게 연계)', when:'원문에 없음 (첨부 HWP 확인)', where:'원문에 없음', who:'전교생·학부모', how:'원문에 없음 (첨부 HWP 확인)',
+    hooks:{1:'집에 안 쓰는 물건, 기부로 바꿔봐요.',2:'나눔과 환경, 한 번에 실천해요.',3:'정리하면서 기부까지, 가볍게 참여해요.'},
+    url:G(537385), views:71, posted:'2026-10-27' },
+  { id:'s528521', cat:'class', title:'아침·야간 자기주도학습', grades:[1,2], deadline:null,
+    summary:'누리관 자습실에서 아침·야간 자율 학습, 담임께 확인서 제출',
+    what:'아침·야간 자기주도학습 (저녁 급식 없음)', when:'평일 아침 07:50~08:50 / 야간 18:30~21:30', where:'2층 누리관 자습실', who:'1·2학년 희망 학생', how:'신청 여부 확인서를 담임 선생님께 제출',
+    hooks:{1:'시험 기간 전, 집중할 자리를 미리 잡아요.',2:'2차 정기시험(12/7) 대비, 자습실에서 같이 해요.'},
+    url:G(528521), views:127, posted:'2026-08-26' },
+  { id:'s524784', cat:'career', title:'함께학교 진로·학업 설계 컨설팅', grades:[1,2,3], deadline:'2026-12-31',
+    summary:'온라인으로 신청하는 무료 진로·학업 설계 컨설팅 (12월까지)',
+    what:'학생 맞춤형 진로·학업 설계 컨설팅', when:'2026년 1월~12월', where:'온라인 (함께학교 사이트)', who:'중·고등학생과 학부모', how:'함께학교 → 스터디카페 → 진로·학업설계 → 컨설팅에서 신청',
+    hooks:{1:'선택과목 고민, 전문가랑 같이 정리해요.',2:'고3 되기 전, 진로 방향을 점검해요.',3:'입시 전략, 무료 상담으로 한 번 더 확인해요.'},
+    url:N(524784), views:149, posted:'2026-07-13' },
+  { id:'s527959', cat:'career', title:'릴레이 전문가 진로특강 (남은 회차)', grades:[1,2,3], deadline:'2026-11-09',
+    summary:'11/3 스마트팜 운영자 특강, 11/10 마지막 특강. 학생 신청은 마감, 학부모 신청 가능',
+    what:'직업별 전문가 릴레이 진로특강 (변호사·의사·반도체·소설가·스마트팜 등)', when:'11/3(화) 15:00 스마트팜 운영자, 11/10(화) 15:00', where:'교내', who:'신청 학생 (학부모도 참여 가능)', how:'학부모는 QR로 신청, 각 특강 전날 17:00까지',
+    hooks:{1:'다양한 직업 이야기, 남은 특강으로 들어봐요.',2:'진로 고민 중이면 마지막 특강까지 챙겨요.',3:'부모님과 같이 진로 이야기 나눌 기회예요.'},
+    url:G(527959), views:92, posted:'2026-08-21' },
+  { id:'s538474', cat:'event', title:'3차 수서 예정 도서 의견 받기', grades:[1,2,3], deadline:null,
+    summary:'도서관이 살 책 목록 공개, 추가 신청·의견은 전화로',
+    what:'도서관 3차 구입 예정 도서 목록 공개 및 의견 수렴 (AI·컴퓨터 책 포함)', when:'원문에 없음', where:'혜윰터(도서관)', who:'전교생', how:'도서관 031-496-2993으로 의견 전달',
+    hooks:{1:'읽고 싶은 책, 도서관에 말해봐요.',2:'탐구에 필요한 책, 학교에서 사 줄 수도 있어요.',3:'필요한 책 있으면 지금 말해요.'},
+    url:N(538474), views:12, posted:'2026-11-02' },
+  { id:'s536118', cat:'event', title:'3차 희망도서 신청', grades:[1,2,3], deadline:null,
+    summary:'읽고 싶은 책을 네이버 폼으로 신청',
+    what:'도서관 희망도서 신청', when:'원문에 없음', where:'혜윰터(도서관)', who:'전교생', how:'네이버 폼 또는 홍보물 QR로 신청',
+    hooks:{1:'사고 싶던 책, 도서관에 신청해요.',2:'탐구용 책, 무료로 빌려 읽어요.',3:'수험생 필독서도 신청할 수 있어요.'},
+    url:N(536118), views:42, posted:'2026-10-19' },
+  { id:'s530151', cat:'event', title:'폰프리 100일의 기적', grades:[1,2,3], deadline:'2026-09-06',
+    summary:'100일 동안 스마트폰 줄이기 실천 (실천 기간 12/15까지)',
+    what:'100일 스마트폰 사용 줄이기 실천·기록', when:'실천 9/7~12/15', where:'개인 실천', who:'경기도 초·중·고 희망 학생', how:'9/1~9/6 신청 (마감)',
+    hooks:{1:'다음엔 꼭 도전해봐요.',2:'다음 기회에 도전해봐요.',3:'다음 기회에 도전해봐요.'},
+    url:G(530151), views:119, posted:'2026-09-03' },
+
+  /* ===== 학사일정 (서해고 10~12월 일정표) ===== */
+  { id:'k1106', cat:'schedule', title:'동아리 활동', grades:[1,2,3], deadline:'2026-11-06', summary:'금요일 동아리 시간', what:'동아리 활동', when:'11/6(금)', where:'교내', who:'전교생', how:'학사일정', hooks:{} },
+  { id:'k1113', cat:'schedule', title:'다문화 이해교육 · 학급자치', grades:[1,2,3], deadline:'2026-11-13', summary:'5교시 다문화 이해교육, 6교시 학급자치', what:'다문화 이해교육, 학급자치', when:'11/13(금) 5·6교시', where:'교내', who:'전교생', how:'학사일정', hooks:{} },
+  { id:'k1119', cat:'schedule', title:'대학수학능력시험', grades:[1,2,3], deadline:'2026-11-19', summary:'11/17 수능준비기간, 11/20은 4교시까지 운영', what:'2027학년도 수능 (3학년 응시)', when:'11/19(목)', where:'수능 시험장', who:'3학년 응시', how:'학사일정 · 교육부', hooks:{3:'끝까지 컨디션 관리, 응원해요.'} },
+  { id:'k1124', cat:'schedule', title:'공동교육과정 안내', grades:[1,2,3], deadline:'2026-11-24', summary:'교육과정부 공동교육과정 안내', what:'공동교육과정 안내', when:'11/24(화)', where:'교내', who:'원문에 없음', how:'학사일정', hooks:{} },
+  { id:'k1127', cat:'schedule', title:'동아리 활동', grades:[1,2,3], deadline:'2026-11-27', summary:'금요일 동아리 시간', what:'동아리 활동', when:'11/27(금)', where:'교내', who:'전교생', how:'학사일정', hooks:{} },
+  { id:'k1201', cat:'schedule', title:'학급특색프로그램 (정기시험 전주)', grades:[1,2,3], deadline:'2026-12-01', summary:'11/30~12/4 체험학습 불허', what:'학급특색프로그램', when:'12/1(화)', where:'교내', who:'전교생', how:'학사일정', hooks:{} },
+  { id:'k1204', cat:'schedule', title:'장애인식개선교육 · 시험장 만들기', grades:[1,2,3], deadline:'2026-12-04', summary:'5교시 장애인식개선교육, 6교시 시험장 만들기', what:'장애인식개선교육, 시험장 준비', when:'12/4(금) 5·6교시', where:'교내', who:'전교생', how:'학사일정', hooks:{} },
+  { id:'k1207', cat:'schedule', title:'2차 정기시험', grades:[1,2,3], deadline:'2026-12-07', summary:'12/7(월)~12/11(금) 2차 정기시험', what:'2학기 2차 정기시험', when:'12/7(월)~12/11(금)', where:'교내', who:'전교생', how:'학사일정', hooks:{1:'자기주도학습 자습실도 활용해요.',2:'자기주도학습 자습실도 활용해요.'} },
+  { id:'k1215', cat:'schedule', title:'학년특색프로그램 (독서 딥다이브·스텝업)', grades:[1,2,3], deadline:'2026-12-15', summary:'12/15, 12/22 화요일 운영', what:'학년특색프로그램: 독서 딥다이브, 스텝업', when:'12/15(화), 12/22(화)', where:'교내', who:'원문에 없음', how:'학사일정', hooks:{} },
+  { id:'k1218', cat:'schedule', title:'동아리 활동', grades:[1,2,3], deadline:'2026-12-18', summary:'금요일 동아리 시간', what:'동아리 활동', when:'12/18(금)', where:'교내', who:'전교생', how:'학사일정', hooks:{} },
+  { id:'k1229', cat:'schedule', title:'청소년 노동인권 교육 · 학술제', grades:[1,2,3], deadline:'2026-12-29', summary:'1·7교시 노동인권 교육, 2~6교시 학술제', what:'청소년 노동인권 교육, 학술제', when:'12/29(화)', where:'교내', who:'전교생', how:'학사일정', hooks:{2:'탐구 결과를 발표하는 날이에요.'} },
+  { id:'k1230', cat:'schedule', title:'동아리 발표회', grades:[1,2,3], deadline:'2026-12-30', summary:'한 해 동아리 활동 발표', what:'동아리 발표회', when:'12/30(수)', where:'교내', who:'전교생', how:'학사일정', hooks:{1:'1년 동아리 활동, 무대에서 보여줘요.',2:'동아리 활동을 정리해 발표해요.'} },
+
+  /* ===== 전국 공통 입시 일정 (교육부·대교협) ===== */
+  { id:'c1211', cat:'schedule', title:'수능 성적 통지', grades:[3], deadline:'2026-12-11', summary:'2027학년도 수능 성적 통지일', what:'수능 성적 통지', when:'12/11(금)', where:'학교', who:'3학년', how:'교육부 발표', hooks:{3:'성적 받고 정시 전략을 세워요.'} },
+  { id:'c1218', cat:'schedule', title:'수시 합격자 발표 마감', grades:[3], deadline:'2026-12-18', summary:'수시 등록 12/21~12/23, 충원 통보 12/24~12/29', what:'2027학년도 수시 합격자 발표 마감', when:'12/18(금)까지', where:'대학별 홈페이지', who:'3학년', how:'대교협 시행계획', hooks:{3:'등록 기간(12/21~23) 놓치지 마세요.'} },
+  { id:'c0104', cat:'schedule', title:'정시 원서접수', grades:[3], deadline:'2027-01-04', summary:'2027.1.4(월)~1.7(목) 중 대학별 3일 이상', what:'2027학년도 정시 원서접수', when:'2027.1.4~1.7', where:'대학별 접수', who:'3학년 (수시 합격자 제외)', how:'대교협 시행계획', hooks:{3:'가·나·다군 지원 대학을 미리 정해요.'} },
+  { id:'c1118', cat:'schedule', title:'2028학년도 수능 (지금 2학년)', grades:[2], deadline:'2027-11-18', summary:'통합형 수능 첫 시행, 하반기 모의평가는 8월로 당겨짐', what:'2028학년도 대학수학능력시험', when:'2027.11.18(목)', where:'수능 시험장', who:'현재 2학년', how:'교육부 발표', hooks:{2:'1년 남았어요. 겨울방학 계획부터 세워요.'} },
+
+  /* ===== 지난 활동 (2026학년도, 다음 해 참고용) ===== */
+  { id:'s532714', cat:'career', title:'AI·교육대전환 명사 아카데미 2회차', grades:[1,2,3], deadline:'2026-10-12',
+    summary:'"AI가 우주를 읽는 시대" 강연, 경기과학고 SRC',
+    what:'AI·우주 데이터 진로 강연 (세종대 교수, 우주기업 대표)', when:'10/17(토) 13:00~15:30', where:'경기과학고 과학영재연구센터', who:'학생·학부모·교원 500명', how:'온라인 신청 10/1~10/12 15:00, 선착순',
+    hooks:{1:'AI랑 우주, 진로를 넓혀보는 강연이에요.',2:'AI 진로라면 생기부 탐구 주제를 찾을 수 있어요.',3:'AI 분야 최신 이야기를 들을 기회예요.'},
+    url:G(532714), views:60, posted:'2026-09-21' },
+  { id:'s531602', cat:'class', title:'미과원 융합과학체험 (2학기)', grades:[1,2], deadline:'2026-09-29',
+    summary:'화학융합·지구과학융합 실험 4일 12차시, 선착순',
+    what:'디지털 도구 화학 실험, 광학 실험·천체관측', when:'10/17~10/31 (강좌별 4회)', where:'경기도교육청미래과학교육원 북부과학교육관(의정부)', who:'경기도 고1·2 희망자', how:'gise.kr 체험학습신청, 9/21~9/29 17:00 선착순',
+    hooks:{1:'학교에서 못 하는 실험, 직접 해봐요.',2:'심화 실험 경험, 탐구 보고서에 써먹어요.'},
+    url:G(531602), views:79, posted:'2026-09-11' },
+  { id:'s510672', cat:'class', title:'미과원 융합과학체험 (1학기)', grades:[1,2], deadline:'2026-05-20',
+    summary:'아두이노 데이터 탐구, 알파폴드 단백질 구조 분석 등',
+    what:'아두이노 센서·데이터 시각화, 알파폴드 단백질 구조 분석', when:'5/20·5/23·5/27·5/30 (4회 12차시)', where:'미래과학교육원 북부과학교육관(의정부)', who:'고1·2 희망자 (선착순)', how:'원문 확인',
+    hooks:{1:'아두이노, 처음이어도 할 수 있어요.',2:'AI·데이터 탐구 경험을 쌓을 수 있어요.'},
+    url:G(510672), views:67, posted:'2026-04-07' },
+  { id:'s527764', cat:'career', title:'2027학년도 선택과목 2차 수강신청', grades:[1,2], deadline:'2026-08-27',
+    summary:'리로스쿨에서 2차 수강신청 (최종 정정은 별도 안내)',
+    what:'2027학년도 선택과목 2차 수강신청', when:'8/24(월) 09:00~8/27(목) 13:00', where:'리로스쿨 → 교육과정 → 수강신청', who:'1·2학년', how:'리로스쿨에서 신청',
+    hooks:{1:'2학년 과목, 진로에 맞춰 골라요.',2:'고3 과목 선택, 대학 권장과목 확인 후 신청해요.'},
+    url:N(527764), views:278, posted:'2026-08-20' },
+  { id:'s523386', cat:'class', title:'2학기 오프라인 공동교육과정 수강신청', grades:[1,2], deadline:'2026-07-08',
+    summary:'우리 학교에 없는 과목을 거점학교에서 수강, 생기부 정규 과목',
+    what:'소인수·심화 과목 공동 수강 (예: 생명과학 실험)', when:'화요일 18:00 이후', where:'거점학교', who:'수강 희망 학생 (과목당 13~20명)', how:'QR 온라인 신청 7/6 18:00~7/8 23:00',
+    hooks:{1:'듣고 싶은 과목이 학교에 없으면 여기서.',2:'심화 과목으로 전공 적합성을 보여줘요.'},
+    url:G(523386), views:148, posted:'2026-07-02' },
+  { id:'s528080', cat:'career', title:'수시 학교장추천전형 지원희망자 신청', grades:[3], deadline:'2026-09-14',
+    summary:'4차에 걸쳐 신청, 교과 점수와 가산점으로 추천',
+    what:'2027학년도 대입 학교장추천전형 지원희망자 신청서 작성', when:'1차 8/21~8/27 ~ 4차 9/9~9/14', where:'교내', who:'3학년 재학생·졸업생', how:'신청서 작성 (첨부 참고)',
+    hooks:{3:'추천 전형 노린다면 1차 기간에 신청해요.'},
+    url:N(528080), views:398, posted:'2026-08-21' },
+  { id:'s509654', cat:'club', title:'국악현악단 모집', grades:[1], deadline:'2026-04-10',
+    summary:'가야금·거문고·아쟁·해금 무료 실기 수업, 간단한 오디션',
+    what:'국악현악단 (전문 강사 무료 실기 수업, 합주)', when:'방과 후 주 2회 17:30~19:30', where:'교내', who:'1학년', how:'1층 생활인권부실 음악 선생님께 신청서 제출, 4/1~4/10',
+    hooks:{1:'악기 처음이어도 무료로 배울 수 있어요.'},
+    url:G(509654), views:82, posted:'2026-04-01' },
+  { id:'s505733', cat:'class', title:'시흥공유학교 봄학기 프로그램', grades:[1,2,3], deadline:'2026-03-25',
+    summary:'시흥시 기관 48개 프로그램, 경기공유학교 홈페이지 신청',
+    what:'지역맞춤형 48개 프로그램', when:'봄학기', where:'시흥시 내 각 기관', who:'초3~고3 학생', how:'경기공유학교 홈페이지(gong-u.goe.go.kr), 3/16~3/25',
+    hooks:{1:'동네에서 듣는 무료 프로그램이에요.',2:'관심 분야 수업을 학교 밖에서 들어요.',3:'부담 없이 들을 수 있는 지역 수업이에요.'},
+    url:G(505733), views:78, posted:'2026-03-13' },
+  { id:'s515178', cat:'contest', title:'전국 고교생 바이오 기술경진대회', grades:[1,2,3], deadline:'2026-06-12',
+    summary:'4인 이내 팀, 연구보고서 → 서류심사 → 8/6 본선',
+    what:'바이오 기술·창업 아이디어 경진대회', when:'본선 8/6(목)', where:'한국폴리텍대학 바이오캠퍼스', who:'전국 고교생 (4인 이내 팀, 학교장 추천)', how:'참가신청 5/11~6/12, 보고서 7/10',
+    hooks:{1:'팀으로 첫 대회 도전해봐요.',2:'생명·바이오 진로라면 탐구 실적을 만들어요.',3:'대회 경험을 기록으로 남겨요.'},
+    url:N(515178), views:117, posted:'2026-05-08' },
+  { id:'s512523', cat:'contest', title:'자율융합탐구프로젝트', grades:[1,2,3], deadline:'2026-04-30',
+    summary:'탐구 주제를 정해 신청서 제출, 융합과학부',
+    what:'자율 주제 융합 탐구 프로젝트', when:'2026학년도', where:'교내', who:'희망 학생', how:'신청서를 2층 융합과학부 담당 선생님께 제출, 4/30까지',
+    hooks:{1:'궁금했던 주제로 첫 탐구를 해봐요.',2:'진로 연계 탐구, 생기부에 남겨요.',3:'관심 분야를 깊게 파볼 기회예요.'},
+    url:N(512523), views:172, posted:'2026-04-16' },
+  { id:'s517811', cat:'contest', title:'클릭온 AI 시즌1', grades:[1,2,3], deadline:'2026-07-07',
+    summary:'온라인 AI 문제해결 체험 행사 (구 온라인 코딩파티)',
+    what:'AI 기반 문제해결 실습 콘텐츠 체험', when:'5/27~7/7', where:'온라인', who:'누구나', how:'원문 첨부 확인',
+    hooks:{1:'AI 체험, 온라인으로 쉽게 해봐요.',2:'AI 진로라면 가볍게 시작해봐요.',3:'짧게 AI를 경험해봐요.'},
+    url:N(517811), views:57, posted:'2026-05-27' },
+  { id:'s526802', cat:'career', title:'경희대 Science Talk 과학콘서트', grades:[1,2,3], deadline:'2026-08-13',
+    summary:'수학·물리·AI·생태·화학 교수 강연, 선착순 200명',
+    what:'이과대학 교수 5인 강연 (AI와 메타버스 포함)', when:'8/22(토) 12:00~17:00', where:'경희대 청운관 B117호', who:'원문에 대상 없음', how:'네이버 링크 신청 8/4~8/13, 선착순',
+    hooks:{1:'대학 강의, 미리 맛봐요.',2:'관심 학과 교수 강연을 직접 들어요.',3:'캠퍼스 투어도 할 수 있어요.'},
+    url:N(526802), views:58, posted:'2026-08-06' },
+  { id:'s520856', cat:'class', title:'융합과학캠퍼스 여름방학 프로그램', grades:[1,2,3], deadline:'2026-07-04',
+    summary:'미래과학교육원 여름 프로그램, 4개 중 1개만 신청',
+    what:'여름방학 과학 체험 프로그램', when:'여름방학', where:'경기도교육청미래과학교육원', who:'원문 확인', how:'gise.kr 체험학습신청, 6/29~7/4 13:00',
+    hooks:{1:'방학에 과학 체험 하나 해봐요.',2:'방학 동안 탐구 경험을 쌓아요.',3:'방학 중 짧은 체험이에요.'},
+    url:N(520856), views:91, posted:'2026-06-18' },
+  { id:'s524737', cat:'career', title:'WISET 여고생 이공계 현장 체험', grades:[1,2,3], deadline:'2026-08-06',
+    summary:'한국쓰리엠기술연구소 견학·특강·실습, 20명',
+    what:'연구소 견학, 현직자 진로 특강, 실습·멘토링', when:'8/6(목) 10:00~15:30', where:'한국쓰리엠기술연구소(동탄)', who:'여자 중2~고3, 20명', how:'첨부 신청서로 신청',
+    hooks:{1:'이공계 연구소를 직접 볼 기회예요.',2:'이공계 진로라면 현직자에게 물어봐요.',3:'연구소 현장을 경험해봐요.'},
+    url:N(524737), views:83, posted:'2026-07-13' },
+  { id:'s525513', cat:'event', title:'여름 독서캠프 「탐독」', grades:[1,2,3], deadline:'2026-08-14',
+    summary:'하루 1시간 독서 + 기록, 성실 참여 시 생기부 기록',
+    what:'하루 1시간 독서 후 활동 기록 (간식 제공)', when:'7/28~7/31, 8/10~8/14', where:'2층 누리관', who:'전교생', how:'포스터 확인',
+    hooks:{1:'방학 독서, 생기부까지 챙겨요.',2:'읽은 책이 기록으로 남아요.',3:'쉬어가며 책 한 권 읽어요.'},
+    url:N(525513), views:101, posted:'2026-07-20' },
+  { id:'s511442', cat:'support', title:'시흥시인재양성재단 상반기 장학생', grades:[1,2,3], deadline:'2026-05-15',
+    summary:'시흥시 1년 이상 거주 학생, 일반·예체능 등 전형',
+    what:'시흥시 장학금 (일반, 지역상생, 예체능, 추천)', when:'상반기', where:'온라인', who:'학생 또는 보호자가 시흥시 1년 이상 거주', how:'shinjae.or.kr 학생명의로 신청, 4/13~5/15 18:00',
+    hooks:{1:'시흥 사는 학생이면 지원할 수 있어요.',2:'조건 맞으면 꼭 신청해봐요.',3:'졸업 전 받을 수 있는 장학금이에요.'},
+    url:N(511442), views:150, posted:'2026-04-10' },
+  { id:'s510350', cat:'support', title:'꿈사다리 장학 (꿈·다문화)', grades:[1,2,3], deadline:'2026-04-15',
+    summary:'고교 월 35만원, 대학 졸업까지 장기 지원 (학교 접수 4/15)',
+    what:'복권기금 꿈사다리 장학금', when:'선발 후 장기 지원', where:'학교 추천', who:'소득·교과·비교과 요건 충족 학생', how:'학교에 4/15까지 접수 (최종 4/30)',
+    hooks:{1:'대학까지 이어지는 장학금이에요.',2:'요건 맞으면 담임쌤과 상담해요.',3:'자격 요건부터 확인해봐요.'},
+    url:N(510350), views:79, posted:'2026-04-06' },
+  { id:'s507833', cat:'class', title:'경기온라인학교 실시간 화상강좌', grades:[1,2,3], deadline:'2026-04-06',
+    summary:'45개 강좌, 80% 출석 시 진로활동 세특 기재',
+    what:'실시간 화상강좌 45개', when:'4/20~5/29', where:'온라인', who:'경기도 초·중·고 학생', how:'online.goe.go.kr 신청, 4/1~4/6 17:00',
+    hooks:{1:'집에서 듣고 생기부에 남겨요.',2:'관심 분야 강좌로 세특을 채워요.',3:'짧게 듣고 기록으로 남겨요.'},
+    url:N(507833), views:55, posted:'2026-03-24' },
+];
+ITEMS.forEach(e => { e.source = e.cat === 'schedule' ? 'calendar' : 'school'; });
+
+const SAMPLE_RAW = `[교육과정부] 2026학년도 2학기 교내 과학탐구 발표대회 개최 계획 알림
+1. 관련: 서해고등학교-2026-1187(2026.10.20.)
+2. 본교 학생들의 탐구 역량 신장 및 과학적 사고력 함양을 위하여 다음과 같이 교내 과학탐구 발표대회를 개최하고자 하오니 학생들의 많은 참여 바랍니다.
+ 가. 대회명: 2026 서해 과학탐구 발표대회
+ 나. 참가대상: 1, 2학년 재학생(개인 또는 2~4인 팀)
+ 다. 참가신청: ${D(9)}까지 구글 설문(학급 게시판 QR) 제출
+ 라. 보고서 제출: ${D(20)} 17:00까지 담당교사 이메일 제출
+ 마. 발표 일시: ${D(27)} 7~8교시 / 장소: 본관 3층 시청각실
+ 바. 시상: 금상, 은상, 동상(교내상)
+ 사. 유의사항: 보고서 양식은 학교 홈페이지 공지사항 첨부파일 참조, 표절 확인 시 수상 취소
+붙임 1. 참가신청서 양식 1부. 끝.`;
+
+/* ---------- 상태 (이 브라우저에만 저장) ---------- */
+const KEY = 'seohae-alimi.v1';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
+const saved = load();
+const state = {
+  grade: [1,2,3].includes(saved.grade) ? saved.grade : 2,
+  interests: Array.isArray(saved.interests) ? saved.interests : ['contest','career','club'],
+  joined: new Set(Array.isArray(saved.joined) ? saved.joined : []),
+  added: Array.isArray(saved.added) ? saved.added : [],
+  tab: 'home', filter: 'all',
+};
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify({grade:state.grade, interests:state.interests, joined:[...state.joined], added:state.added})); } catch {} };
+const allItems = () => [...state.added, ...ITEMS];
+const byId = id => allItems().find(i => i.id === id);
+
+/* ---------- 도우미 ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const daysLeft = it => it.deadline ? Math.round((new Date(it.deadline+'T00:00:00') - TODAY) / 864e5) : null;
+function ddayHTML(it){
+  const d = daysLeft(it);
+  if (d === null) return `<span class="dday">상시</span>`;
+  if (d < 0) return `<span class="dday done">${it.cat === 'schedule' ? '지남' : '마감'}</span>`;
+  const cls = d <= 3 ? 'hot' : d <= 7 ? 'warm' : '';
+  return `<span class="dday ${cls}">${d === 0 ? 'D-DAY' : 'D-' + d}</span>`;
+}
+const fits = it => it.grades.includes(state.grade);
+const open = it => { const d = daysLeft(it); return d === null || d >= 0; };
+const sortDL = (a,b) => (daysLeft(a) ?? 999) - (daysLeft(b) ?? 999);
+const isNew = it => it.source === 'ai';
+
+function cardHTML(it, mini){
+  const c = catOf(it.cat);
+  const hook = it.hooks?.[state.grade];
+  const off = !fits(it);
+  return `<button type="button" class="card${mini?' mini':''}${off?' off':''}" data-id="${esc(it.id)}">
+    <div class="row"><span class="cat"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}</span>
+      ${isNew(it)?'<span class="tag new">NEW</span>':''}${state.joined.has(it.id)?'<span class="tag me">참여 예정</span>':''}${off?'<span class="tag no">대상 아님</span>':''}${ddayHTML(it)}</div>
+    <p class="title">${esc(it.title)}</p>
+    ${hook && !off ? `<p class="hook">${esc(hook)}</p>` : `<p class="meta">${esc(it.summary)}</p>`}
+    ${mini ? '' : `<p class="meta">${esc(it.when)} · ${esc(it.where)}</p>`}
+  </button>`;
+}
+
+/* ---------- 화면: 나에게 맞는 ---------- */
+function renderHome(){
+  const mine = allItems().filter(i => fits(i) && open(i) && i.cat !== 'schedule');
+  const urgent = mine.filter(i => { const d = daysLeft(i); return d !== null && d <= 7; }).sort(sortDL);
+  const interest = mine.filter(i => state.interests.includes(i.cat)).sort(sortDL);
+  const soon = allItems().filter(i => i.cat === 'schedule' && fits(i) && open(i) && daysLeft(i) <= 14).sort(sortDL);
+  const other = mine.length - interest.length;
+  const intNames = state.interests.map(id => catOf(id).name).join(', ') || '없음';
+  $('#v-home').innerHTML = `
+    <p class="demo-note">서해고 홈페이지 안내문(2026.3~11, 239건)과 학사일정을 바탕으로 정리했어요. 2026년 11월 3일 기준이에요.</p>
+    <div class="pulse">
+      <div><b>${mine.length}</b><span>내가 할 수 있는</span></div>
+      <div><b style="color:var(--hot)">${urgent.length}</b><span>이번 주 마감</span></div>
+      <div><b style="color:var(--sea)">${[...state.joined].filter(id => byId(id)).length}</b><span>참여 예정</span></div>
+    </div>
+    <h2 class="sec">이번 주 마감 <small>놓치기 전에</small></h2>
+    ${urgent.length ? `<div class="strip">${urgent.map(i => cardHTML(i, true)).join('')}</div>` : `<div class="empty">이번 주에 마감되는 활동이 없어요.</div>`}
+    <h2 class="sec">내 관심 분야 <small>${esc(intNames)}</small></h2>
+    ${interest.length ? `<div class="list">${interest.map(i => cardHTML(i)).join('')}</div>` : `<div class="empty">관심 분야에 맞는 활동이 아직 없어요. <button class="linkbtn" data-act="settings" type="button">관심 분야 바꾸기</button></div>`}
+    <h2 class="sec">다가오는 학교 일정 <small>2주 안</small></h2>
+    ${soon.length ? `<div class="list">${soon.map(i => cardHTML(i)).join('')}</div>` : `<div class="empty">2주 안에 예정된 학교 일정이 없어요.</div>`}
+    ${other > 0 ? `<p style="margin:16px 0 0;font-size:14px;color:var(--muted)">관심 분야 밖에도 ${other}개 더 있어요. <button class="linkbtn" data-act="goAll" type="button">전체 보기</button></p>` : ''}`;
+}
+
+/* ---------- 화면: 전체 활동 ---------- */
+function renderAll(){
+  const list = allItems().filter(i => state.filter === 'all' || i.cat === state.filter)
+    .sort((a,b) => (open(b) - open(a)) || (fits(b) - fits(a)) || sortDL(a,b));
+  const counts = id => allItems().filter(i => i.cat === id && open(i)).length;
+  $('#v-all').innerHTML = `
+    <h2 class="sec" style="margin-top:6px">전체 활동 <small>AI가 자동 분류</small></h2>
+    <div class="chips" role="group" aria-label="분류">
+      <button type="button" class="chip" data-filter="all" aria-pressed="${state.filter==='all'}">전체 ${allItems().filter(open).length}</button>
+      ${CATS.map(c => `<button type="button" class="chip" data-filter="${c.id}" aria-pressed="${state.filter===c.id}"><span class="dot" style="background:${c.color}"></span>${c.name} ${counts(c.id)}</button>`).join('')}
+    </div>
+    ${list.length ? `<div class="list">${list.map(i => cardHTML(i)).join('')}</div>` : `<div class="empty">이 분류에는 아직 활동이 없어요.</div>`}`;
+}
+
+/* ---------- 상세 / 설정 시트 ---------- */
+let lastFocus = null;
+function showSheet(html){
+  lastFocus = document.activeElement;
+  $('#sheetIn').innerHTML = `<div class="grab"></div>` + html;
+  $('#scrim').hidden = false; $('#sheet').hidden = false;
+  $('#sheet').scrollTop = 0;
+  ($('#sheet').querySelector('[data-autofocus]') || $('#sheet').querySelector('button'))?.focus();
+}
+function closeSheet(){ $('#scrim').hidden = true; $('#sheet').hidden = true; lastFocus?.focus?.(); }
+
+function detailHTML(it, preview){
+  const c = catOf(it.cat);
+  const hook = it.hooks?.[state.grade];
+  const off = !fits(it);
+  return `
+    <div class="row"><span class="cat"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}</span>${off?'<span class="tag no">'+state.grade+'학년 대상 아님</span>':''}${ddayHTML(it)}</div>
+    <h3>${esc(it.title)}</h3>
+    ${hook && !off ? `<div class="callout"><small>${state.grade}학년에게</small><p>${esc(hook)}</p></div>` : ''}
+    <p style="margin:0">${esc(it.summary)}</p>
+    <dl class="facts">
+      <dt>무엇</dt><dd>${esc(it.what)}</dd>
+      <dt>언제</dt><dd>${esc(it.when)}</dd>
+      <dt>어디서</dt><dd>${esc(it.where)}</dd>
+      <dt>누가</dt><dd>${esc(it.who)}</dd>
+      <dt>${it.cat === 'schedule' ? '출처' : '신청'}</dt><dd>${esc(it.how)}${it.deadline && it.cat !== 'schedule' ? ` <b style="white-space:nowrap">(${esc(kday(new Date(it.deadline+'T00:00:00')))}까지)</b>` : ''}</dd>
+    </dl>
+    ${it.cat === 'schedule' ? '' : `<div><p class="lbl">학년별 홍보 문구</p><ul class="hooks">
+      ${[1,2,3].map(g => `<li class="${g===state.grade?'mine':''}"><b>${g}학년</b><span>${it.hooks?.[g] ? esc(it.hooks[g]) : '<span style="color:var(--muted)">대상 아님</span>'}</span></li>`).join('')}
+    </ul></div>`}
+    ${it.url ? `<p class="meta">학교 홈페이지 ${it.posted ? esc(it.posted) + ' 게시 · ' : ''}조회 ${esc(it.views)}회 · <a href="${esc(it.url)}" target="_blank" rel="noopener" style="color:var(--sea);font-weight:600">원문 보기</a></p>` : ''}
+    ${it.raw ? `<details class="raw"><summary>원문 보기 (${it.raw.length}자)</summary><pre>${esc(it.raw)}</pre></details>` : ''}
+    ${preview || it.cat === 'schedule' ? '' : `<button type="button" class="btn join" data-join="${esc(it.id)}" aria-pressed="${state.joined.has(it.id)}" ${off?'disabled':''}>${state.joined.has(it.id) ? '참여 예정이에요 ✓' : '참여할래요'}</button>`}`;
+}
+function openDetail(id){ const it = byId(id); if (it) showSheet(detailHTML(it)); }
+
+function openSettings(){
+  const draft = {grade: state.grade, interests: new Set(state.interests)};
+  const paint = () => showSheet(`
+    <h3>나에게 맞게 보기</h3>
+    <div><p class="lbl">학년</p><div class="seg">${[1,2,3].map(g => `<button type="button" class="chip" data-g="${g}" aria-pressed="${draft.grade===g}">${g}학년</button>`).join('')}</div></div>
+    <div><p class="lbl">관심 분야 (여러 개 선택)</p><div class="wrapchips">${CATS.map(c => `<button type="button" class="chip" data-i="${c.id}" aria-pressed="${draft.interests.has(c.id)}"><span class="dot" style="background:${c.color}"></span>${c.name}</button>`).join('')}</div></div>
+    <button type="button" class="btn primary" data-act="saveSettings" data-autofocus>저장</button>`);
+  paint();
+  $('#sheetIn').onclick = e => {
+    const g = e.target.closest('[data-g]'), i = e.target.closest('[data-i]'), s = e.target.closest('[data-act="saveSettings"]');
+    if (g){ draft.grade = +g.dataset.g; $('#sheetIn').querySelectorAll('[data-g]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.g === draft.grade)); }
+    if (i){ const id = i.dataset.i; draft.interests.has(id) ? draft.interests.delete(id) : draft.interests.add(id); i.setAttribute('aria-pressed', draft.interests.has(id)); }
+    if (s){ state.grade = draft.grade; state.interests = [...draft.interests]; persist(); $('#sheetIn').onclick = null; closeSheet(); render(); toast('저장했어요'); }
+  };
+}
+
+/* ---------- AI 정리 ---------- */
+let sample = null, imgFile = null, ctl = null, draft = null, busy = false;
+const ERR = {
+  not_granted:'Claude 사용을 허용해야 AI 정리를 쓸 수 있어요.',
+  sampling_disabled:'이 계정에서는 AI 기능을 쓸 수 없어요.',
+  rate_limited:'요청이 많아요. 잠시 후 다시 눌러 주세요.',
+  session_expired:'다시 로그인한 뒤 시도해 주세요.',
+  refused:'이 내용은 정리할 수 없어요. 다른 게시물로 해 보세요.',
+  invalid_json:'AI 답을 읽지 못했어요. 한 번 더 눌러 주세요.',
+  image_rejected:'이 사진은 쓸 수 없어요. JPG나 PNG로 다시 올려 주세요.',
+  prompt_too_large:'원문이 너무 길어요. 핵심 부분만 붙여넣어 주세요.',
+};
+const setStatus = (html, err) => { const s = $('#status'); s.innerHTML = html; s.classList.toggle('err', !!err); };
+
+function buildPrompt(text, hasImage){
+  return `너는 한국 고등학교(서해고등학교, 경기도 시흥시 일반고)의 학교 게시물을 학생 눈높이로 정리하는 도우미다.
+오늘 날짜: ${iso(TODAY)}
+${hasImage ? '첨부한 사진은 학교 게시판 포스터다. 사진 속 글자를 읽어 정리해라.\n' : ''}아래 게시물을 읽고 JSON 객체 하나만 답해라. 다른 말은 쓰지 마라.
+
+형식:
+{"title":"20자 이내 제목","category":"${CATS.map(c=>c.name).join('" | "')} 중 정확히 하나","summary":"학생이 3초 안에 이해할 한 문장, 35자 이내","what":"무엇을 하는지","when":"활동 일시","where":"장소","who":"참가 대상","how":"신청 방법","deadline":"신청 마감일 YYYY-MM-DD, 없으면 null","grades":[참가 가능한 학년 숫자들, 예: [1,2]],"hooks":{"1":"1학년 대상 홍보 문구 또는 null","2":"2학년 대상 홍보 문구 또는 null","3":"3학년 대상 홍보 문구 또는 null"}}
+
+규칙:
+- 원문에 없는 정보는 지어내지 말고 "원문에 없음"이라고 쓴다.
+- 연도가 없는 날짜는 오늘 이후 가장 가까운 날짜로 본다.
+- 참가 대상이 아닌 학년의 hooks 값은 null.
+- hooks는 그 학년 학생이 "나도 해볼까" 싶게 만드는 문구다. 반말 아닌 친근한 해요체, 30자 안팎, 과장이나 이모지 없이, 그 학년의 상황(1학년 처음 경험, 2학년 진로·탐구 심화, 3학년 입시·마무리)에 맞춘다.
+- 공문 투 표현(~하고자 함, ~바람)은 쓰지 않는다.
+
+게시물 원문:
+"""
+${text || '(사진 참고)'}
+"""`;
+}
+
+function normalize(r, rawText){
+  if (!r || typeof r !== 'object') throw {code:'invalid_json'};
+  const s = v => (typeof v === 'string' && v.trim()) ? v.trim() : '원문에 없음';
+  const cat = CATS.find(c => c.name === r.category) || CATS.find(c => String(r.category||'').includes(c.name.split('·')[0])) || catOf('event');
+  let grades = Array.isArray(r.grades) ? r.grades.map(Number).filter(g => [1,2,3].includes(g)) : [];
+  if (!grades.length) grades = [1,2,3];
+  const hooks = {};
+  [1,2,3].forEach(g => { const h = r.hooks?.[g] ?? r.hooks?.[String(g)]; if (grades.includes(g) && typeof h === 'string' && h.trim()) hooks[g] = h.trim(); });
+  const deadline = typeof r.deadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.deadline) ? r.deadline : null;
+  return { id:'ai'+Date.now(), cat:cat.id, title:s(r.title), summary:s(r.summary), what:s(r.what), when:s(r.when), where:s(r.where), who:s(r.who), how:s(r.how),
+    deadline, grades, hooks, raw: rawText || '(포스터 사진에서 읽음)', source:'ai', addedAt: Date.now() };
+}
+
+async function runAI(){
+  if (busy){ ctl?.abort(); return; }
+  if (!sample){ setStatus('AI 정리는 Claude 앱이나 claude.ai에서 열었을 때 작동해요.', true); return; }
+  const text = $('#raw').value.trim();
+  if (!text && !imgFile){ setStatus('게시물 원문을 붙여넣거나 포스터 사진을 올려 주세요.', true); $('#raw').focus(); return; }
+  busy = true; ctl = new AbortController();
+  $('#runBtn').textContent = '그만하기'; $('#result').hidden = true;
+  setStatus('<span class="spinner"></span>AI가 읽고 있어요…');
+  try {
+    const opts = { modelTier:'quick', signal: ctl.signal };
+    if (imgFile) opts.images = [imgFile];
+    const r = await sample.json(buildPrompt(text, !!imgFile), opts);
+    draft = normalize(r, text);
+    renderDraft(text);
+    setStatus('정리했어요. 확인하고 게시판에 올려 보세요.');
+  } catch (e) {
+    if (e?.code === 'cancelled') setStatus('멈췄어요.');
+    else if (['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e?.code)) { setStatus(ERR[e.code] || 'AI 기능을 쓸 수 없는 화면이에요.', true); }
+    else setStatus(ERR[e?.code] || '연결이 잠시 끊겼어요. 다시 눌러 주세요.', true);
+  } finally {
+    busy = false; $('#runBtn').textContent = 'AI로 정리하기';
+  }
+}
+
+function renderDraft(text){
+  const core = [draft.summary, draft.when, draft.where, draft.who, draft.how].join('').length;
+  const rawLen = text.length;
+  $('#result').innerHTML = `
+    ${rawLen ? `<div class="compare"><span>원문 <b>${rawLen}</b>자</span><span class="arrow">→</span><span>핵심 <b>${core}</b>자</span><span style="margin-left:auto;color:var(--muted)">약 ${Math.max(1, Math.round(rawLen / core))}분의 1</span></div>` : ''}
+    <div><p class="lbl">학생에게 이렇게 보여요</p>${cardHTML(draft)}</div>
+    <div class="card" style="box-shadow:none">${detailHTML(draft, true)}</div>
+    <button type="button" class="btn primary" data-act="publish">게시판에 올리기</button>`;
+  $('#result').hidden = false;
+  $('#result').querySelector('.card[data-id]').removeAttribute('data-id');
+}
+
+function publishDraft(){
+  if (!draft) return;
+  state.added.unshift(draft); persist();
+  draft = null; $('#result').hidden = true; $('#raw').value = ''; clearImg(); setStatus('');
+  state.filter = 'all'; setTab('all'); toast('게시판에 올렸어요');
+}
+
+function clearImg(){ imgFile = null; $('#thumb').hidden = true; $('#photo').value = ''; }
+
+/* ---------- 탭 / 공통 ---------- */
+function setTab(t){
+  state.tab = t;
+  ['home','all','ai'].forEach(k => $('#v-'+k).hidden = k !== t);
+  document.querySelectorAll('nav.tabs button').forEach(b => b.dataset.tab === t ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
+  render(); window.scrollTo(0,0);
+}
+function render(){
+  $('#whoLabel').textContent = `${state.grade}학년`;
+  if (state.tab === 'home') renderHome();
+  if (state.tab === 'all') renderAll();
+}
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
+
+document.addEventListener('click', e => {
+  const tab = e.target.closest('nav.tabs [data-tab]'); if (tab) return setTab(tab.dataset.tab);
+  const f = e.target.closest('[data-filter]'); if (f){ state.filter = f.dataset.filter; return renderAll(); }
+  const j = e.target.closest('[data-join]');
+  if (j){ const id = j.dataset.join; state.joined.has(id) ? state.joined.delete(id) : state.joined.add(id); persist();
+    j.setAttribute('aria-pressed', state.joined.has(id)); j.textContent = state.joined.has(id) ? '참여 예정이에요 ✓' : '참여할래요';
+    toast(state.joined.has(id) ? '참여 예정에 담았어요' : '참여 예정에서 뺐어요'); render(); return; }
+  const a = e.target.closest('[data-act]');
+  if (a){ const act = a.dataset.act;
+    if (act === 'settings') return openSettings();
+    if (act === 'goAll') return setTab('all');
+    if (act === 'publish') return publishDraft();
+  }
+  const c = e.target.closest('[data-id]'); if (c && !c.closest('#result')) return openDetail(c.dataset.id);
+});
+$('#scrim').addEventListener('click', closeSheet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+$('#whoBtn').addEventListener('click', openSettings);
+$('#exampleBtn').addEventListener('click', () => { $('#raw').value = SAMPLE_RAW; setStatus('예시 공문을 넣었어요. AI로 정리하기를 눌러 보세요.'); });
+$('#runBtn').addEventListener('click', runAI);
+$('#photo').addEventListener('change', e => {
+  const f = e.target.files?.[0]; if (!f) return;
+  imgFile = f; $('#thumbImg').src = URL.createObjectURL(f); $('#thumbName').textContent = f.name; $('#thumb').hidden = false;
+});
+$('#thumbX').addEventListener('click', clearImg);
+
+render();
+
+/* AI 연결: 가능한 화면에서만 켜짐 */
+(async () => {
+  try { sample = await window.claude?.use?.('sample'); } catch { sample = null; }
+  if (!sample){ setStatus('AI 정리는 Claude 앱이나 claude.ai에서 열었을 때 작동해요.'); return; }
+  try { const lim = await sample.limits(); $('#photoBtn').hidden = !lim?.images; } catch {}
+})();
+</script>

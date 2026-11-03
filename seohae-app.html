@@ -1,0 +1,531 @@
+<title>서해고 활동알리미</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one phone-width column, bottom tab bar, bottom sheets for detail/settings. Sea-blue school palette. */
+:root{
+  --bg:#F3F7F9; --surface:#FFFFFF; --ink:#0E2230; --muted:#5B6F7D; --line:#DCE6EC;
+  --sea:#0B6E8A; --sea-ink:#FFFFFF; --sea-soft:#E1F0F5;
+  --hot:#D9480F; --hot-soft:#FDEBE3; --warm:#B7791F; --warm-soft:#FBF1DD;
+  --shadow:0 1px 2px rgba(14,34,48,.06),0 4px 14px rgba(14,34,48,.06);
+  --f-display:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A161D; --surface:#11222C; --ink:#E5EEF2; --muted:#93A8B5; --line:#21384A;
+  --sea:#4DB3D0; --sea-ink:#06202A; --sea-soft:#14384A;
+  --hot:#FF8A5B; --hot-soft:#3A2018; --warm:#E9B65A; --warm-soft:#33280F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A161D; --surface:#11222C; --ink:#E5EEF2; --muted:#93A8B5; --line:#21384A;
+  --sea:#4DB3D0; --sea-ink:#06202A; --sea-soft:#14384A;
+  --hot:#FF8A5B; --hot-soft:#3A2018; --warm:#E9B65A; --warm-soft:#33280F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25); color-scheme:dark}
+
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,summary:focus-visible,label:focus-within{outline:2px solid var(--sea);outline-offset:2px}
+.app{max-width:520px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px calc(96px + env(safe-area-inset-bottom,0px))}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:4px 14px}
+.logo{font-family:var(--f-display);font-size:24px;letter-spacing:.01em;line-height:1.1;margin:0}
+.logo b{color:var(--sea);font-weight:400}
+.who{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+.who svg{width:14px;height:14px}
+.demo-note{font-size:12px;color:var(--muted);margin:0 0 14px}
+
+/* sections */
+h2.sec{font-size:17px;font-weight:700;margin:22px 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:8px;text-wrap:balance}
+h2.sec small{font-size:12px;font-weight:500;color:var(--muted)}
+.list{display:grid;gap:10px}
+.strip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;margin-inline:-4px;padding-inline:4px}
+.strip::-webkit-scrollbar{height:0}
+
+/* cards */
+.card{display:grid;gap:6px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);min-width:0}
+.card:hover{border-color:var(--sea)}
+.card.mini{flex:0 0 76%;max-width:300px;scroll-snap-align:start;border-color:var(--hot);background:linear-gradient(var(--hot-soft),var(--surface) 70%)}
+.card.off{opacity:.55}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.cat{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dday{margin-left:auto;font-family:var(--f-mono);font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--sea-soft);color:var(--sea);font-variant-numeric:tabular-nums}
+.dday.warm{background:var(--warm-soft);color:var(--warm)}
+.dday.hot{background:var(--hot);color:#fff}
+.dday.done{background:var(--line);color:var(--muted)}
+.tag{font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;letter-spacing:.02em}
+.tag.new{background:var(--sea);color:var(--sea-ink)}
+.tag.me{background:var(--sea-soft);color:var(--sea)}
+.tag.no{background:var(--line);color:var(--muted)}
+.title{font-size:16px;font-weight:700;line-height:1.35;margin:0;text-wrap:balance}
+.hook{font-size:14px;color:var(--sea);font-weight:600;margin:0}
+.meta{font-size:12.5px;color:var(--muted);margin:0;overflow-wrap:anywhere}
+
+/* chips */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px}
+.chips::-webkit-scrollbar{height:0}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:13.5px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.wrapchips{display:flex;flex-wrap:wrap;gap:8px}
+
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:18px;text-align:center;color:var(--muted);font-size:14px}
+.linkbtn{background:none;border:0;padding:0;color:var(--sea);font-weight:600;font-size:13px;text-decoration:underline;text-underline-offset:3px}
+
+/* stats banner on home */
+.pulse{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+.pulse div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.pulse b{display:block;font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2}
+.pulse span{font-size:12px;color:var(--muted)}
+
+/* AI tab */
+.lead{font-size:14px;color:var(--muted);margin:0 0 12px}
+textarea{width:100%;min-height:170px;resize:vertical;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);padding:12px;font:inherit;font-size:14px;line-height:1.6}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn.primary{background:var(--sea);border-color:var(--sea);color:var(--sea-ink);width:100%;justify-content:center;padding:14px;font-size:15.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn svg{width:16px;height:16px}
+.thumb{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin-bottom:10px}
+.thumb img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.status{font-size:14px;color:var(--muted);margin:10px 0 0;min-height:1.4em}
+.status.err{color:var(--hot)}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--sea);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+.result{margin-top:16px;display:grid;gap:12px}
+.compare{display:flex;align-items:center;gap:10px;background:var(--sea-soft);border-radius:12px;padding:12px 14px;font-size:13.5px}
+.compare b{font-family:var(--f-mono);font-size:17px;font-variant-numeric:tabular-nums}
+.compare .arrow{color:var(--sea);font-weight:700}
+
+/* detail / sheet */
+.scrim{position:fixed;inset:0;background:rgba(5,15,22,.45);z-index:40}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-height:88%;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+.sheet-in{max-width:520px;margin:0 auto;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:10px calc(20px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 4px}
+.sheet h3{font-size:20px;line-height:1.3;margin:0;text-wrap:balance}
+.callout{background:var(--sea-soft);border-radius:12px;padding:12px 14px}
+.callout small{display:block;font-size:12px;font-weight:700;color:var(--sea);letter-spacing:.02em;margin-bottom:2px}
+.callout p{margin:0;font-weight:600}
+dl.facts{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:0;font-size:14px}
+dl.facts dt{color:var(--muted);font-weight:600;white-space:nowrap}
+dl.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.lbl{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.03em;margin:0 0 6px}
+.hooks{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:13.5px}
+.hooks li{display:flex;gap:8px;align-items:baseline}
+.hooks li b{font-family:var(--f-mono);font-size:12px;color:var(--muted);flex:none;width:34px}
+.hooks li.mine{color:var(--sea);font-weight:600}
+details.raw{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+details.raw summary{cursor:pointer;font-weight:600;font-size:14px}
+details.raw pre{white-space:pre-wrap;font-family:var(--f-body);font-size:13px;color:var(--muted);margin:10px 0 0;line-height:1.6}
+.join{width:100%;justify-content:center;padding:14px;font-size:15.5px}
+.join[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:var(--sea-ink)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg .chip{justify-content:center}
+
+/* bottom nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+nav.tabs button{background:none;border:0;padding:9px 4px 10px;display:grid;justify-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted)}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-current="page"]{color:var(--sea)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:50;max-width:calc(100% - 32px)}
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1 class="logo">서해고 <b>활동알리미</b></h1>
+    <button class="who" id="whoBtn" type="button" aria-label="학년과 관심 분야 바꾸기">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+      <span id="whoLabel">2학년</span>
+    </button>
+  </header>
+
+  <main>
+    <section id="v-home"></section>
+    <section id="v-all" hidden></section>
+    <section id="v-ai" hidden>
+      <h2 class="sec" style="margin-top:6px">AI 게시물 정리</h2>
+      <p class="lead">공문이나 포스터 내용을 넣으면 AI가 분류하고, 핵심만 뽑고, 학년별 홍보 문구를 새로 써요.</p>
+      <textarea id="raw" placeholder="여기에 게시물 원문을 붙여넣으세요"></textarea>
+      <div class="thumb" id="thumb" hidden><img id="thumbImg" alt="올린 포스터 사진"><span id="thumbName"></span><button class="linkbtn" id="thumbX" type="button">빼기</button></div>
+      <div class="tools">
+        <button class="btn" id="exampleBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/></svg>예시 공문 넣기</button>
+        <label class="btn" id="photoBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>포스터 사진<input type="file" id="photo" accept="image/*" hidden></label>
+      </div>
+      <button class="btn primary" id="runBtn" type="button">AI로 정리하기</button>
+      <p class="status" id="status" aria-live="polite"></p>
+      <div class="result" id="result" hidden></div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabs" aria-label="메뉴">
+  <div class="in">
+    <button type="button" data-tab="home" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg>나에게 맞는</button>
+    <button type="button" data-tab="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>전체 활동</button>
+    <button type="button" data-tab="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>AI 정리</button>
+  </div>
+</nav>
+
+<div id="scrim" class="scrim" hidden></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" hidden><div class="sheet-in" id="sheetIn"></div></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* ---------- 기본 데이터 ---------- */
+const CATS = [
+  {id:'contest',  name:'대회·공모전', color:'#E8590C'},
+  {id:'career',   name:'진로·진학',   color:'#1C7ED6'},
+  {id:'class',    name:'방과후·특강', color:'#7950F2'},
+  {id:'volunteer',name:'봉사',        color:'#2F9E44'},
+  {id:'club',     name:'동아리',      color:'#D6336C'},
+  {id:'event',    name:'행사',        color:'#F59F00'},
+  {id:'support',  name:'장학·지원',   color:'#0CA678'},
+];
+const catOf = id => CATS.find(c => c.id === id) || CATS[5];
+
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const addDays = n => { const d = new Date(TODAY); d.setDate(d.getDate()+n); return d; };
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const kday = d => `${d.getMonth()+1}월 ${d.getDate()}일(${'일월화수목금토'[d.getDay()]})`;
+const D = n => kday(addDays(n));
+const nextSat = (min) => { let n = min; while (addDays(n).getDay() !== 6) n++; return n; };
+const SAT = nextSat(8);
+
+/* 예시 게시물: 날짜는 오늘 기준으로 계산되어 시연할 때마다 최신 상태 */
+const EXAMPLES = [
+  { id:'ex1', cat:'career', title:'3학년 수시 모의면접 신청', grades:[3], dl:1,
+    summary:'면접 전형 지원자 대상 1:1 모의면접, 내일 마감',
+    what:'교사 2인 면접관 1:1 모의면접 + 피드백', when:`${D(4)} ~ ${D(6)} 방과후`, where:'본관 2층 진로상담실', who:'3학년 중 면접 전형 지원자', how:'담임 선생님께 신청서 제출',
+    hooks:{3:'면접 전 실전 연습, 딱 한 번 남았어요. 내일까지 담임쌤께.'},
+    raw:`[진로진학상담부] 2026학년도 대입 수시모집 면접고사 대비 교내 모의면접 실시 안내\n1. 수시모집 면접 전형 지원 학생의 면접 역량 강화를 위하여 다음과 같이 교내 모의면접을 실시하고자 합니다.\n가. 대상: 3학년 재학생 중 면접 전형 지원자(희망자)\n나. 일시: ${D(4)} ~ ${D(6)} 정규수업 종료 후\n다. 장소: 본관 2층 진로상담실 및 교과교실\n라. 방법: 교사 2인 면접관, 개인별 15분 면접 후 피드백\n마. 신청: ${D(1)}까지 신청서를 담임교사에게 제출\n바. 준비물: 자기소개 1분 스크립트, 지원 대학 모집요강 사본\n붙임 1. 모의면접 신청서 1부. 끝.` },
+  { id:'ex2', cat:'contest', title:'시흥시 청소년 AI 아이디어 공모전', grades:[1,2,3], dl:5,
+    summary:'AI로 우리 동네 문제를 푸는 아이디어 공모, 3인 팀 가능',
+    what:'AI 활용 지역 문제 해결 아이디어 기획서 제출', when:`접수 ~ ${D(5)}`, where:'온라인 제출', who:'시흥시 중·고등학생 (개인 또는 3인 이내 팀)', how:'신청서 + A4 5쪽 이내 기획서 이메일 제출',
+    hooks:{1:'첫 대회로 딱 좋아요. 친구 2명이랑 팀으로 나가요.',2:'AI·공학 진로라면 생기부에 쓸 탐구 한 줄, 여기서 만들어요.',3:'아이디어만 있으면 돼요. 기획서 5쪽이면 끝.'},
+    raw:`시흥시청소년수련관에서는 청소년의 창의적 문제해결 역량을 함양하고 지역사회 문제에 대한 관심을 제고하고자 「2026 시흥시 청소년 AI 아이디어 공모전」을 아래와 같이 개최하오니 관심 있는 학생들의 많은 참여 바랍니다.\n○ 주제: 인공지능(AI)을 활용한 우리 지역 생활 속 문제 해결 아이디어\n○ 참가자격: 시흥시 소재 중·고등학교 재학생(개인 또는 3인 이내 팀)\n○ 접수기간: ~ ${D(5)} 18:00까지\n○ 제출서류: 참가신청서 1부, 아이디어 기획서(A4 5매 이내, 자유양식), 개인정보 수집·이용 동의서\n○ 제출방법: 전자우편 제출\n○ 시상: 최우수 1팀, 우수 2팀, 장려 3팀\n※ 기타 자세한 사항은 붙임 공고문 참조 / 문의: 진로상담부` },
+  { id:'ex3', cat:'class', title:'방과후 「파이썬으로 데이터 분석」', grades:[1,2], dl:6,
+    summary:'코딩 처음이어도 OK, 무료 방과후 20명 선착순',
+    what:'파이썬 기초 → 학교 급식·날씨 데이터 분석 실습', when:'매주 화·목 16:30~18:00 (8주)', where:'정보관 1층 컴퓨터실1', who:'1·2학년 20명 (선착순)', how:'방과후 신청 시스템에서 신청',
+    hooks:{1:'코딩 0부터 시작해요. 무료라 부담 없어요.',2:'데이터 분석 경험, 탐구 보고서에 바로 써먹어요.'},
+    raw:`2026학년도 2학기 2분기 방과후학교 프로그램 수강생 추가 모집 안내\n- 강좌명: 파이썬으로 데이터 분석하기(기초)\n- 대상: 1, 2학년 희망자 20명(선착순 마감)\n- 운영: 매주 화, 목 16:30~18:00 / 8주 과정\n- 장소: 정보관 1층 컴퓨터실1\n- 수강료: 자유수강권 적용(무료)\n- 내용: 파이썬 기초 문법, 공공데이터 수집 및 시각화(급식, 기상 데이터 등)\n- 신청: ${D(6)}까지 방과후학교 수강신청 시스템 접속하여 신청\n※ 정원 초과 시 조기 마감될 수 있음` },
+  { id:'ex4', cat:'club', title:'자율동아리 「서해 로보틱스」 부원 모집', grades:[1,2], dl:4,
+    summary:'아두이노·자율주행 RC카 만드는 동아리, 신입 환영',
+    what:'아두이노 기초, 라인트레이싱·자율주행 RC카 제작', when:'매주 금 7교시 이후', where:'과학관 3층 메이커실', who:'1·2학년 (경험 없어도 가능)', how:'구글폼 지원 + 간단한 면담',
+    hooks:{1:'만들어 보고 싶었던 거, 여기서 처음 해봐요.',2:'자율주행·로봇 활동, 진로와 바로 연결돼요.'},
+    raw:`자율동아리 「서해 로보틱스」 2학기 신규 부원 모집\n활동 내용: 아두이노 기초 실습, 센서 활용, 라인트레이싱 로봇 및 자율주행 RC카 제작, 교내 메이커 페스티벌 출품\n모집 대상: 1~2학년 (경험 무관, 열정 있는 학생)\n활동 시간: 매주 금요일 7교시 종료 후\n장소: 과학관 3층 메이커실\n지원 방법: ${D(4)}까지 구글폼(복도 게시판 QR) 작성 → 개별 면담 후 선발` },
+  { id:'ex5', cat:'volunteer', title:'갯골생태공원 환경정화 봉사', grades:[1,2,3], dl:SAT-3,
+    summary:'토요일 오전 3시간, 봉사시간 3시간 인정',
+    what:'공원 산책로·갯골 주변 쓰레기 줍기', when:`${D(SAT)} 09:30~12:30`, where:'시흥갯골생태공원 정문 집결', who:'전 학년 30명', how:'학생부 앞 신청서 작성',
+    hooks:{1:'봉사시간 채우기 제일 쉬운 날, 친구랑 같이 와요.',2:'토요일 오전 3시간이면 봉사 3시간 인정.',3:'잠깐 바람 쐬면서 봉사시간도 챙겨요.'},
+    raw:`학생자치부 주관 지역사회 연계 환경정화 봉사활동 참가자 모집\n1. 일시: ${D(SAT)} 09:30~12:30\n2. 장소: 시흥갯골생태공원(정문 앞 09:20까지 집결)\n3. 대상: 1~3학년 희망자 30명\n4. 활동내용: 공원 산책로 및 갯골 주변 환경정화 활동\n5. 봉사시간: 3시간 인정(1365 자원봉사포털 연계)\n6. 준비물: 편한 복장, 개인 물병, 모자\n7. 신청: ${D(SAT-3)}까지 학생부 앞 신청서 작성 / 우천 시 일정 변경 추후 공지` },
+  { id:'ex6', cat:'career', title:'진로특강 「반도체공학과는 뭘 배울까」', grades:[1,2], dl:2,
+    summary:'현직 연구원이 알려주는 반도체 학과·진로, 7교시',
+    what:'반도체공학과 교육과정·진로 특강 + 질의응답', when:`${D(3)} 7교시`, where:'본관 3층 시청각실', who:'1·2학년 희망자 60명', how:'반장에게 명단 제출',
+    hooks:{1:'반도체 학과, 들어가면 뭘 하는지 한 시간에 정리.',2:'공대 진로 고민 중이면 이번 특강은 꼭.'},
+    raw:`학과 탐색 진로특강 운영 계획(반도체공학 분야)\n○ 일시: ${D(3)} 7교시\n○ 장소: 본관 3층 시청각실\n○ 강사: 반도체 기업 연구원(외부 강사)\n○ 대상: 1, 2학년 중 관련 분야 진로 희망자 60명\n○ 내용: 반도체공학과 교육과정, 필요 역량, 산업 동향 및 진로, 질의응답\n○ 신청: ${D(2)}까지 학급 반장이 희망자 명단 취합하여 진로상담부 제출` },
+  { id:'ex7', cat:'event', title:'서해제 부스 운영 신청', grades:[1,2,3], dl:12,
+    summary:'학급·동아리 단위 축제 부스 신청, 운영비 지원',
+    what:'축제 체험·먹거리·전시 부스 운영', when:`축제 당일 ${D(26)}`, where:'운동장·본관 1층', who:'학급 또는 동아리 단위', how:'부스 운영 계획서를 학생회실에 제출',
+    hooks:{1:'첫 축제, 우리 반 부스로 제대로 즐겨요.',2:'동아리 활동 보여줄 최고의 무대예요.',3:'고등학교 마지막 축제, 같이 추억 하나 남겨요.'},
+    raw:`2026 서해제(학교축제) 부스 운영 단체 모집\n가. 모집 단위: 학급, 정규/자율동아리\n나. 부스 유형: 체험, 전시, 먹거리(조리 불가, 완제품만)\n다. 신청 기한: ${D(12)}까지 학생회실에 부스 운영 계획서 제출\n라. 운영비: 부스당 최대 5만원 지원(영수증 증빙)\n마. 축제 일시: ${D(26)} / 장소: 운동장 및 본관 1층\n※ 신청 단체 수에 따라 학생회 심사 후 선정` },
+  { id:'ex8', cat:'support', title:'지역 인재육성 장학생 추천', grades:[2,3], dl:15,
+    summary:'성적·활동 우수 학생 장학금 추천, 담임 상담 필요',
+    what:'지역 장학재단 장학금 학교 추천', when:`서류 마감 ${D(15)}`, where:'교무실', who:'2·3학년 (학업·활동 우수자)', how:'담임 상담 후 추천서·자기소개서 제출',
+    hooks:{2:'활동 꾸준히 했다면 장학금도 노려봐요.',3:'졸업 전 받을 수 있는 장학금, 놓치지 마세요.'},
+    raw:`○○장학재단 2026년 하반기 인재육성 장학생 학교장 추천 안내\n1. 추천 대상: 2, 3학년 재학생 중 학업 성적 및 교내 활동이 우수한 학생\n2. 장학금: 1인 100만원(일시 지급)\n3. 제출서류: 장학생 추천서(담임 작성), 자기소개서(1,000자 이내), 재학증명서 1부\n4. 제출기한: ${D(15)}까지 교무실 장학 담당 교사에게 제출\n5. 기타: 학교별 추천 인원 제한(2명)으로 교내 심사 진행` },
+];
+EXAMPLES.forEach(e => { e.deadline = iso(addDays(e.dl)); e.source = 'example'; });
+
+const SAMPLE_RAW = `[교육과정부] 2026학년도 2학기 교내 과학탐구 발표대회 개최 계획 알림
+1. 관련: 서해고등학교-2026-1187(2026.10.20.)
+2. 본교 학생들의 탐구 역량 신장 및 과학적 사고력 함양을 위하여 다음과 같이 교내 과학탐구 발표대회를 개최하고자 하오니 학생들의 많은 참여 바랍니다.
+ 가. 대회명: 2026 서해 과학탐구 발표대회
+ 나. 참가대상: 1, 2학년 재학생(개인 또는 2~4인 팀)
+ 다. 참가신청: ${D(9)}까지 구글 설문(학급 게시판 QR) 제출
+ 라. 보고서 제출: ${D(20)} 17:00까지 담당교사 이메일 제출
+ 마. 발표 일시: ${D(27)} 7~8교시 / 장소: 본관 3층 시청각실
+ 바. 시상: 금상, 은상, 동상(교내상)
+ 사. 유의사항: 보고서 양식은 학교 홈페이지 공지사항 첨부파일 참조, 표절 확인 시 수상 취소
+붙임 1. 참가신청서 양식 1부. 끝.`;
+
+/* ---------- 상태 (이 브라우저에만 저장) ---------- */
+const KEY = 'seohae-alimi.v1';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
+const saved = load();
+const state = {
+  grade: [1,2,3].includes(saved.grade) ? saved.grade : 2,
+  interests: Array.isArray(saved.interests) ? saved.interests : ['contest','career','club'],
+  joined: new Set(Array.isArray(saved.joined) ? saved.joined : []),
+  added: Array.isArray(saved.added) ? saved.added : [],
+  tab: 'home', filter: 'all',
+};
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify({grade:state.grade, interests:state.interests, joined:[...state.joined], added:state.added})); } catch {} };
+const allItems = () => [...state.added, ...EXAMPLES];
+const byId = id => allItems().find(i => i.id === id);
+
+/* ---------- 도우미 ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const daysLeft = it => it.deadline ? Math.round((new Date(it.deadline+'T00:00:00') - TODAY) / 864e5) : null;
+function ddayHTML(it){
+  const d = daysLeft(it);
+  if (d === null) return `<span class="dday">상시</span>`;
+  if (d < 0) return `<span class="dday done">마감</span>`;
+  const cls = d <= 3 ? 'hot' : d <= 7 ? 'warm' : '';
+  return `<span class="dday ${cls}">${d === 0 ? 'D-DAY' : 'D-' + d}</span>`;
+}
+const fits = it => it.grades.includes(state.grade);
+const open = it => { const d = daysLeft(it); return d === null || d >= 0; };
+const sortDL = (a,b) => (daysLeft(a) ?? 999) - (daysLeft(b) ?? 999);
+const isNew = it => it.source === 'ai';
+
+function cardHTML(it, mini){
+  const c = catOf(it.cat);
+  const hook = it.hooks?.[state.grade];
+  const off = !fits(it);
+  return `<button type="button" class="card${mini?' mini':''}${off?' off':''}" data-id="${esc(it.id)}">
+    <div class="row"><span class="cat"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}</span>
+      ${isNew(it)?'<span class="tag new">NEW</span>':''}${state.joined.has(it.id)?'<span class="tag me">참여 예정</span>':''}${off?'<span class="tag no">대상 아님</span>':''}${ddayHTML(it)}</div>
+    <p class="title">${esc(it.title)}</p>
+    ${hook && !off ? `<p class="hook">${esc(hook)}</p>` : `<p class="meta">${esc(it.summary)}</p>`}
+    ${mini ? '' : `<p class="meta">${esc(it.when)} · ${esc(it.where)}</p>`}
+  </button>`;
+}
+
+/* ---------- 화면: 나에게 맞는 ---------- */
+function renderHome(){
+  const mine = allItems().filter(i => fits(i) && open(i));
+  const urgent = mine.filter(i => { const d = daysLeft(i); return d !== null && d <= 7; }).sort(sortDL);
+  const interest = mine.filter(i => state.interests.includes(i.cat)).sort(sortDL);
+  const other = mine.length - interest.length;
+  const intNames = state.interests.map(id => catOf(id).name).join(', ') || '없음';
+  $('#v-home').innerHTML = `
+    <p class="demo-note">시연용 예시 게시물이에요. 날짜는 오늘 기준으로 맞춰져 있어요.</p>
+    <div class="pulse">
+      <div><b>${mine.length}</b><span>내가 할 수 있는</span></div>
+      <div><b style="color:var(--hot)">${urgent.length}</b><span>이번 주 마감</span></div>
+      <div><b style="color:var(--sea)">${[...state.joined].filter(id => byId(id)).length}</b><span>참여 예정</span></div>
+    </div>
+    <h2 class="sec">이번 주 마감 <small>놓치기 전에</small></h2>
+    ${urgent.length ? `<div class="strip">${urgent.map(i => cardHTML(i, true)).join('')}</div>` : `<div class="empty">이번 주에 마감되는 활동이 없어요.</div>`}
+    <h2 class="sec">내 관심 분야 <small>${esc(intNames)}</small></h2>
+    ${interest.length ? `<div class="list">${interest.map(i => cardHTML(i)).join('')}</div>` : `<div class="empty">관심 분야에 맞는 활동이 아직 없어요. <button class="linkbtn" data-act="settings" type="button">관심 분야 바꾸기</button></div>`}
+    ${other > 0 ? `<p style="margin:16px 0 0;font-size:14px;color:var(--muted)">관심 분야 밖에도 ${other}개 더 있어요. <button class="linkbtn" data-act="goAll" type="button">전체 보기</button></p>` : ''}`;
+}
+
+/* ---------- 화면: 전체 활동 ---------- */
+function renderAll(){
+  const list = allItems().filter(i => state.filter === 'all' || i.cat === state.filter)
+    .sort((a,b) => (open(b) - open(a)) || (fits(b) - fits(a)) || sortDL(a,b));
+  const counts = id => allItems().filter(i => i.cat === id && open(i)).length;
+  $('#v-all').innerHTML = `
+    <h2 class="sec" style="margin-top:6px">전체 활동 <small>AI가 자동 분류</small></h2>
+    <div class="chips" role="group" aria-label="분류">
+      <button type="button" class="chip" data-filter="all" aria-pressed="${state.filter==='all'}">전체 ${allItems().filter(open).length}</button>
+      ${CATS.map(c => `<button type="button" class="chip" data-filter="${c.id}" aria-pressed="${state.filter===c.id}"><span class="dot" style="background:${c.color}"></span>${c.name} ${counts(c.id)}</button>`).join('')}
+    </div>
+    ${list.length ? `<div class="list">${list.map(i => cardHTML(i)).join('')}</div>` : `<div class="empty">이 분류에는 아직 활동이 없어요.</div>`}`;
+}
+
+/* ---------- 상세 / 설정 시트 ---------- */
+let lastFocus = null;
+function showSheet(html){
+  lastFocus = document.activeElement;
+  $('#sheetIn').innerHTML = `<div class="grab"></div>` + html;
+  $('#scrim').hidden = false; $('#sheet').hidden = false;
+  $('#sheet').scrollTop = 0;
+  ($('#sheet').querySelector('[data-autofocus]') || $('#sheet').querySelector('button'))?.focus();
+}
+function closeSheet(){ $('#scrim').hidden = true; $('#sheet').hidden = true; lastFocus?.focus?.(); }
+
+function detailHTML(it, preview){
+  const c = catOf(it.cat);
+  const hook = it.hooks?.[state.grade];
+  const off = !fits(it);
+  return `
+    <div class="row"><span class="cat"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}</span>${off?'<span class="tag no">'+state.grade+'학년 대상 아님</span>':''}${ddayHTML(it)}</div>
+    <h3>${esc(it.title)}</h3>
+    ${hook && !off ? `<div class="callout"><small>${state.grade}학년에게</small><p>${esc(hook)}</p></div>` : ''}
+    <p style="margin:0">${esc(it.summary)}</p>
+    <dl class="facts">
+      <dt>무엇</dt><dd>${esc(it.what)}</dd>
+      <dt>언제</dt><dd>${esc(it.when)}</dd>
+      <dt>어디서</dt><dd>${esc(it.where)}</dd>
+      <dt>누가</dt><dd>${esc(it.who)}</dd>
+      <dt>신청</dt><dd>${esc(it.how)}${it.deadline ? ` <b style="white-space:nowrap">(${esc(kday(new Date(it.deadline+'T00:00:00')))}까지)</b>` : ''}</dd>
+    </dl>
+    <div><p class="lbl">학년별 홍보 문구</p><ul class="hooks">
+      ${[1,2,3].map(g => `<li class="${g===state.grade?'mine':''}"><b>${g}학년</b><span>${it.hooks?.[g] ? esc(it.hooks[g]) : '<span style="color:var(--muted)">대상 아님</span>'}</span></li>`).join('')}
+    </ul></div>
+    ${it.raw ? `<details class="raw"><summary>원문 보기 (${it.raw.length}자)</summary><pre>${esc(it.raw)}</pre></details>` : ''}
+    ${preview ? '' : `<button type="button" class="btn join" data-join="${esc(it.id)}" aria-pressed="${state.joined.has(it.id)}" ${off?'disabled':''}>${state.joined.has(it.id) ? '참여 예정이에요 ✓' : '참여할래요'}</button>`}`;
+}
+function openDetail(id){ const it = byId(id); if (it) showSheet(detailHTML(it)); }
+
+function openSettings(){
+  const draft = {grade: state.grade, interests: new Set(state.interests)};
+  const paint = () => showSheet(`
+    <h3>나에게 맞게 보기</h3>
+    <div><p class="lbl">학년</p><div class="seg">${[1,2,3].map(g => `<button type="button" class="chip" data-g="${g}" aria-pressed="${draft.grade===g}">${g}학년</button>`).join('')}</div></div>
+    <div><p class="lbl">관심 분야 (여러 개 선택)</p><div class="wrapchips">${CATS.map(c => `<button type="button" class="chip" data-i="${c.id}" aria-pressed="${draft.interests.has(c.id)}"><span class="dot" style="background:${c.color}"></span>${c.name}</button>`).join('')}</div></div>
+    <button type="button" class="btn primary" data-act="saveSettings" data-autofocus>저장</button>`);
+  paint();
+  $('#sheetIn').onclick = e => {
+    const g = e.target.closest('[data-g]'), i = e.target.closest('[data-i]'), s = e.target.closest('[data-act="saveSettings"]');
+    if (g){ draft.grade = +g.dataset.g; $('#sheetIn').querySelectorAll('[data-g]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.g === draft.grade)); }
+    if (i){ const id = i.dataset.i; draft.interests.has(id) ? draft.interests.delete(id) : draft.interests.add(id); i.setAttribute('aria-pressed', draft.interests.has(id)); }
+    if (s){ state.grade = draft.grade; state.interests = [...draft.interests]; persist(); $('#sheetIn').onclick = null; closeSheet(); render(); toast('저장했어요'); }
+  };
+}
+
+/* ---------- AI 정리 ---------- */
+let sample = null, imgFile = null, ctl = null, draft = null, busy = false;
+const ERR = {
+  not_granted:'Claude 사용을 허용해야 AI 정리를 쓸 수 있어요.',
+  sampling_disabled:'이 계정에서는 AI 기능을 쓸 수 없어요.',
+  rate_limited:'요청이 많아요. 잠시 후 다시 눌러 주세요.',
+  session_expired:'다시 로그인한 뒤 시도해 주세요.',
+  refused:'이 내용은 정리할 수 없어요. 다른 게시물로 해 보세요.',
+  invalid_json:'AI 답을 읽지 못했어요. 한 번 더 눌러 주세요.',
+  image_rejected:'이 사진은 쓸 수 없어요. JPG나 PNG로 다시 올려 주세요.',
+  prompt_too_large:'원문이 너무 길어요. 핵심 부분만 붙여넣어 주세요.',
+};
+const setStatus = (html, err) => { const s = $('#status'); s.innerHTML = html; s.classList.toggle('err', !!err); };
+
+function buildPrompt(text, hasImage){
+  return `너는 한국 고등학교(서해고등학교, 경기도 시흥시 일반고)의 학교 게시물을 학생 눈높이로 정리하는 도우미다.
+오늘 날짜: ${iso(TODAY)}
+${hasImage ? '첨부한 사진은 학교 게시판 포스터다. 사진 속 글자를 읽어 정리해라.\n' : ''}아래 게시물을 읽고 JSON 객체 하나만 답해라. 다른 말은 쓰지 마라.
+
+형식:
+{"title":"20자 이내 제목","category":"${CATS.map(c=>c.name).join('" | "')} 중 정확히 하나","summary":"학생이 3초 안에 이해할 한 문장, 35자 이내","what":"무엇을 하는지","when":"활동 일시","where":"장소","who":"참가 대상","how":"신청 방법","deadline":"신청 마감일 YYYY-MM-DD, 없으면 null","grades":[참가 가능한 학년 숫자들, 예: [1,2]],"hooks":{"1":"1학년 대상 홍보 문구 또는 null","2":"2학년 대상 홍보 문구 또는 null","3":"3학년 대상 홍보 문구 또는 null"}}
+
+규칙:
+- 원문에 없는 정보는 지어내지 말고 "원문에 없음"이라고 쓴다.
+- 연도가 없는 날짜는 오늘 이후 가장 가까운 날짜로 본다.
+- 참가 대상이 아닌 학년의 hooks 값은 null.
+- hooks는 그 학년 학생이 "나도 해볼까" 싶게 만드는 문구다. 반말 아닌 친근한 해요체, 30자 안팎, 과장이나 이모지 없이, 그 학년의 상황(1학년 처음 경험, 2학년 진로·탐구 심화, 3학년 입시·마무리)에 맞춘다.
+- 공문 투 표현(~하고자 함, ~바람)은 쓰지 않는다.
+
+게시물 원문:
+"""
+${text || '(사진 참고)'}
+"""`;
+}
+
+function normalize(r, rawText){
+  if (!r || typeof r !== 'object') throw {code:'invalid_json'};
+  const s = v => (typeof v === 'string' && v.trim()) ? v.trim() : '원문에 없음';
+  const cat = CATS.find(c => c.name === r.category) || CATS.find(c => String(r.category||'').includes(c.name.split('·')[0])) || catOf('event');
+  let grades = Array.isArray(r.grades) ? r.grades.map(Number).filter(g => [1,2,3].includes(g)) : [];
+  if (!grades.length) grades = [1,2,3];
+  const hooks = {};
+  [1,2,3].forEach(g => { const h = r.hooks?.[g] ?? r.hooks?.[String(g)]; if (grades.includes(g) && typeof h === 'string' && h.trim()) hooks[g] = h.trim(); });
+  const deadline = typeof r.deadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.deadline) ? r.deadline : null;
+  return { id:'ai'+Date.now(), cat:cat.id, title:s(r.title), summary:s(r.summary), what:s(r.what), when:s(r.when), where:s(r.where), who:s(r.who), how:s(r.how),
+    deadline, grades, hooks, raw: rawText || '(포스터 사진에서 읽음)', source:'ai', addedAt: Date.now() };
+}
+
+async function runAI(){
+  if (busy){ ctl?.abort(); return; }
+  if (!sample){ setStatus('AI 정리는 Claude 앱이나 claude.ai에서 열었을 때 작동해요.', true); return; }
+  const text = $('#raw').value.trim();
+  if (!text && !imgFile){ setStatus('게시물 원문을 붙여넣거나 포스터 사진을 올려 주세요.', true); $('#raw').focus(); return; }
+  busy = true; ctl = new AbortController();
+  $('#runBtn').textContent = '그만하기'; $('#result').hidden = true;
+  setStatus('<span class="spinner"></span>AI가 읽고 있어요…');
+  try {
+    const opts = { modelTier:'quick', signal: ctl.signal };
+    if (imgFile) opts.images = [imgFile];
+    const r = await sample.json(buildPrompt(text, !!imgFile), opts);
+    draft = normalize(r, text);
+    renderDraft(text);
+    setStatus('정리했어요. 확인하고 게시판에 올려 보세요.');
+  } catch (e) {
+    if (e?.code === 'cancelled') setStatus('멈췄어요.');
+    else if (['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e?.code)) { setStatus(ERR[e.code] || 'AI 기능을 쓸 수 없는 화면이에요.', true); }
+    else setStatus(ERR[e?.code] || '연결이 잠시 끊겼어요. 다시 눌러 주세요.', true);
+  } finally {
+    busy = false; $('#runBtn').textContent = 'AI로 정리하기';
+  }
+}
+
+function renderDraft(text){
+  const core = [draft.summary, draft.when, draft.where, draft.who, draft.how].join('').length;
+  const rawLen = text.length;
+  $('#result').innerHTML = `
+    ${rawLen ? `<div class="compare"><span>원문 <b>${rawLen}</b>자</span><span class="arrow">→</span><span>핵심 <b>${core}</b>자</span><span style="margin-left:auto;color:var(--muted)">약 ${Math.max(1, Math.round(rawLen / core))}분의 1</span></div>` : ''}
+    <div><p class="lbl">학생에게 이렇게 보여요</p>${cardHTML(draft)}</div>
+    <div class="card" style="box-shadow:none">${detailHTML(draft, true)}</div>
+    <button type="button" class="btn primary" data-act="publish">게시판에 올리기</button>`;
+  $('#result').hidden = false;
+  $('#result').querySelector('.card[data-id]').removeAttribute('data-id');
+}
+
+function publishDraft(){
+  if (!draft) return;
+  state.added.unshift(draft); persist();
+  draft = null; $('#result').hidden = true; $('#raw').value = ''; clearImg(); setStatus('');
+  state.filter = 'all'; setTab('all'); toast('게시판에 올렸어요');
+}
+
+function clearImg(){ imgFile = null; $('#thumb').hidden = true; $('#photo').value = ''; }
+
+/* ---------- 탭 / 공통 ---------- */
+function setTab(t){
+  state.tab = t;
+  ['home','all','ai'].forEach(k => $('#v-'+k).hidden = k !== t);
+  document.querySelectorAll('nav.tabs button').forEach(b => b.dataset.tab === t ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
+  render(); window.scrollTo(0,0);
+}
+function render(){
+  $('#whoLabel').textContent = `${state.grade}학년`;
+  if (state.tab === 'home') renderHome();
+  if (state.tab === 'all') renderAll();
+}
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
+
+document.addEventListener('click', e => {
+  const tab = e.target.closest('nav.tabs [data-tab]'); if (tab) return setTab(tab.dataset.tab);
+  const f = e.target.closest('[data-filter]'); if (f){ state.filter = f.dataset.filter; return renderAll(); }
+  const j = e.target.closest('[data-join]');
+  if (j){ const id = j.dataset.join; state.joined.has(id) ? state.joined.delete(id) : state.joined.add(id); persist();
+    j.setAttribute('aria-pressed', state.joined.has(id)); j.textContent = state.joined.has(id) ? '참여 예정이에요 ✓' : '참여할래요';
+    toast(state.joined.has(id) ? '참여 예정에 담았어요' : '참여 예정에서 뺐어요'); render(); return; }
+  const a = e.target.closest('[data-act]');
+  if (a){ const act = a.dataset.act;
+    if (act === 'settings') return openSettings();
+    if (act === 'goAll') return setTab('all');
+    if (act === 'publish') return publishDraft();
+  }
+  const c = e.target.closest('[data-id]'); if (c && !c.closest('#result')) return openDetail(c.dataset.id);
+});
+$('#scrim').addEventListener('click', closeSheet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+$('#whoBtn').addEventListener('click', openSettings);
+$('#exampleBtn').addEventListener('click', () => { $('#raw').value = SAMPLE_RAW; setStatus('예시 공문을 넣었어요. AI로 정리하기를 눌러 보세요.'); });
+$('#runBtn').addEventListener('click', runAI);
+$('#photo').addEventListener('change', e => {
+  const f = e.target.files?.[0]; if (!f) return;
+  imgFile = f; $('#thumbImg').src = URL.createObjectURL(f); $('#thumbName').textContent = f.name; $('#thumb').hidden = false;
+});
+$('#thumbX').addEventListener('click', clearImg);
+
+render();
+
+/* AI 연결: 가능한 화면에서만 켜짐 */
+(async () => {
+  try { sample = await window.claude?.use?.('sample'); } catch { sample = null; }
+  if (!sample){ setStatus('AI 정리는 Claude 앱이나 claude.ai에서 열었을 때 작동해요.'); return; }
+  try { const lim = await sample.limits(); $('#photoBtn').hidden = !lim?.images; } catch {}
+})();
+</script>
