@@ -139,6 +139,29 @@ dl.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
 .ref{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:8px 2px;font-size:14px}
 .ref span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ref em{font-style:normal;color:var(--green);font-weight:700}
+.ref span.badge{flex:none}
+
+/* 검색창: 폰 홈 화면 검색 위젯처럼 가로로 긴 알약 모양, 맨 왼쪽에 로고 */
+.sbar{flex:none;width:100%;height:48px;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 8px 0 9px;box-shadow:0 1px 3px rgba(19,38,28,.08);text-align:left;cursor:text}
+.sbar svg.logo{width:30px;height:30px;flex:none}
+.sbar .ph{flex:1;min-width:0;font-size:15px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbar .go{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--green)}
+.sbar .go svg{width:20px;height:20px}
+.sbar:hover{border-color:#B9CFC1}
+.ask.sbar{cursor:auto;padding-right:5px}
+.ask.sbar input{flex:1;min-width:0;border:0;background:none;padding:0;font:inherit;font-size:16px;color:var(--ink);outline:none}
+.ask.sbar button{flex:none;height:38px;border:0;border-radius:999px;background:var(--green);color:#fff;padding:0 16px;font-weight:700;font-size:15px}
+.ask.sbar:focus-within{border-color:var(--green)}
+
+/* 질문 창: 위에 여백만 남기고 화면을 덮음 */
+.sheet.full{top:44px;max-height:none;border-radius:22px 22px 0 0}
+.sheet.full .sheet-in{min-height:100%;align-content:start}
+/* 손잡이 영역: 아래로 끌어서 닫기 */
+.grab-area{touch-action:none;cursor:grab;padding:4px 0 2px;margin:-10px -16px 0;display:grid;justify-items:center;gap:4px}
+.grab-area .grab{width:44px;height:5px;border-radius:3px;background:#C9D6CE}
+.grab-area small{font-size:11.5px;color:var(--mute)}
+.sheet.drag{transition:none}
+.sheet.back{transition:transform .2s ease}
 </style>
 </head>
 <body>
@@ -157,7 +180,6 @@ dl.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
       <span>SEOHAE <b>LINK</b></span>
     </h1>
     <div class="hbtns">
-      <button class="pill" id="askBtn" type="button" aria-label="안내문에 대해 질문하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>질문</button>
       <button class="pill" id="whoBtn" type="button" aria-label="학년 바꾸기"><span id="whoLabel">2학년</span></button>
     </div>
   </header>
@@ -177,6 +199,10 @@ dl.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
 <div id="sheet" class="sheet" role="dialog" aria-modal="true" hidden><div class="sheet-in" id="sheetIn"></div></div>
 
 <script>
+/* 헤더와 같은 로고 (검색창 맨 왼쪽에 사용) */
+const LOGO = `<svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="16" fill="#128150"/><g fill="none" stroke-width="3" stroke-linecap="round"><rect x="5" y="11.5" width="14" height="9" rx="4.5" transform="rotate(-35 12 16)" stroke="#FFFFFF"/><rect x="13" y="11.5" width="14" height="9" rx="4.5" transform="rotate(-35 20 16)" stroke="#BFEBD2"/><path d="M14.2 19.6 L16.6 17.9" stroke="#FFFFFF"/></g></svg>`;
+const SEARCH_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>`;
+
 /* ---------- 분류 ---------- */
 const CATS = [
   {id:'contest',  name:'대회·공모전'},
@@ -1817,6 +1843,7 @@ function homeList(heroId){
 function renderHome(){
   const hero = pickHero(), list = homeList(hero?.it.id);
   $('#v-home').innerHTML = `${heroHTML(hero)}${weekHTML()}
+    <button type="button" class="sbar" data-act="openAsk" aria-label="안내문에 대해 질문하기">${LOGO}<span class="ph">무엇이든 물어보세요</span><span class="go">${SEARCH_ICON}</span></button>
     <div class="lab"><span>내게 맞는 안내</span><button type="button" data-act="goAll">전체 ${ITEMS.filter(i => isOpen(i) && forMe(i)).length} ›</button></div>
     <div class="fit" id="homeFit"></div>`;
   const fit = $('#homeFit'), per = perPageOf(fit);
@@ -1863,13 +1890,30 @@ function renderAll(){
 
 /* ---------- 시트 ---------- */
 let lastFocus = null;
-function showSheet(html){
+/* full=true면 질문 창처럼 위쪽 여백만 남기고 화면을 덮음. 손잡이 영역을 아래로 끌면 닫힘 */
+function showSheet(html, full){
   lastFocus = document.activeElement;
-  $('#sheetIn').innerHTML = `<div class="grab"></div>` + html;
-  $('#scrim').hidden = false; $('#sheet').hidden = false; $('#sheet').scrollTop = 0;
+  const sh = $('#sheet');
+  $('#sheetIn').innerHTML = `<div class="grab-area" id="grab"><div class="grab"></div><small>아래로 밀어서 닫기</small></div>` + html;
+  sh.classList.toggle('full', !!full); sh.style.transform = '';
+  $('#scrim').hidden = false; sh.hidden = false; sh.scrollTop = 0;
+  dragClose($('#grab'));
   ($('#sheet').querySelector('[data-autofocus]') || $('#sheet').querySelector('button'))?.focus();
 }
-function closeSheet(){ if (busy) ctl?.abort(); $('#scrim').hidden = true; $('#sheet').hidden = true; lastFocus?.focus?.(); }
+function closeSheet(){ if (busy) ctl?.abort(); $('#scrim').hidden = true; $('#sheet').hidden = true; $('#sheet').style.transform = ''; lastFocus?.focus?.(); }
+/* 손잡이를 잡고 아래로 끌기: 100px 넘게 끌거나 빠르게 내리면 닫고, 아니면 제자리로 */
+function dragClose(handle){
+  const sh = $('#sheet'); let y0 = null, t0 = 0, dy = 0;
+  handle.onpointerdown = e => { y0 = e.clientY; t0 = e.timeStamp; dy = 0; sh.classList.remove('back'); sh.classList.add('drag'); handle.setPointerCapture(e.pointerId); };
+  handle.onpointermove = e => { if (y0 === null) return; dy = Math.max(0, e.clientY - y0); sh.style.transform = `translateY(${dy}px)`; };
+  const end = e => {
+    if (y0 === null) return; y0 = null; sh.classList.remove('drag');
+    const fast = dy > 30 && dy / Math.max(1, e.timeStamp - t0) > 0.6;
+    if (dy > 100 || fast) closeSheet();
+    else { sh.classList.add('back'); sh.style.transform = ''; }
+  };
+  handle.onpointerup = end; handle.onpointercancel = end;
+}
 
 function factsHTML(it){
   const dl = it.deadline && it.cat !== 'schedule' ? ` <b style="white-space:nowrap">(${esc(kday(new Date(it.deadline+'T00:00:00')))}까지)</b>` : '';
@@ -1965,13 +2009,12 @@ function localAnswer(q){
 }
 function openAsk(){
   showSheet(`
-    <h3>무엇이든 물어보세요</h3>
-    <div class="ask"><input id="q" type="text" maxlength="200" placeholder="예: 이번 주 마감 뭐 있어?" autocomplete="off" data-autofocus>
+    <div class="ask sbar">${LOGO}<input id="q" type="text" maxlength="200" placeholder="무엇이든 물어보세요" aria-label="질문" autocomplete="off" data-autofocus>
       <button id="askGo" type="button" data-act="ask">묻기</button></div>
     <div class="ex">${EXAMPLES.map(e => `<button type="button" class="chip" data-q="${esc(e)}">${esc(e)}</button>`).join('')}</div>
     <p class="status" id="status" aria-live="polite"></p>
     <div id="ans" hidden></div>
-    <p class="foot">${state.grade}학년 기준 · 서해고 홈페이지 안내문으로만 답해요.</p>`);
+    <p class="foot">${state.grade}학년 기준 · 서해고 홈페이지 안내문으로만 답해요.</p>`, true);
 }
 function showAnswer(r, by){
   const ids = (Array.isArray(r.ids) ? r.ids : []).filter(id => byId(id)).slice(0, 3);
@@ -2016,7 +2059,7 @@ document.addEventListener('click', e => {
   const pg = t.closest('[data-page]'); if (pg){ state.page += +pg.dataset.page; return renderAll(); }
   const dy = t.closest('[data-day]'); if (dy) return openDay(dy.dataset.day);
   const a = t.closest('[data-act]');
-  if (a){ if (a.dataset.act === 'goAll') return setTab('all'); if (a.dataset.act === 'ask') return runAsk($('#q').value); }
+  if (a){ if (a.dataset.act === 'goAll') return setTab('all'); if (a.dataset.act === 'openAsk') return openAsk(); if (a.dataset.act === 'ask') return runAsk($('#q').value); }
   const qq = t.closest('[data-q]'); if (qq){ $('#q').value = qq.dataset.q; return runAsk(qq.dataset.q); }
   const c = t.closest('[data-id]'); if (c) return openDetail(c.dataset.id);
 });
@@ -2028,7 +2071,6 @@ document.addEventListener('keydown', e => {
 $('#scrim').addEventListener('click', closeSheet);
 /* 학년 버튼: 누를 때마다 2→3→1→2 순으로 바뀜 */
 $('#whoBtn').addEventListener('click', () => { state.grade = state.grade % 3 + 1; persist(); render(); });
-$('#askBtn').addEventListener('click', openAsk);
 
 let raf = 0;
 new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(render); }).observe($('#main'));
