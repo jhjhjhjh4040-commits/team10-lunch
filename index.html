@@ -1950,12 +1950,16 @@ function openDay(key){
 
 /* ---------- 질문: AI가 안내문 데이터로 답함. AI가 없으면 키워드 검색으로 대신 답함 ---------- */
 let sample = null, ctl = null, busy = false;
+/* Claude 밖(GitHub Pages)에서 쓸 AI 중계 서버 주소. Cloudflare Worker를 올린 뒤 주소를 넣는다 (예: 'https://seohae-link-ai.계정.workers.dev').
+   비어 있으면 AI 없이 키워드 검색으로만 답함 */
+const AI_ENDPOINT = '';
 const ERR = {
   not_granted:'Claude 사용을 허용해야 AI가 답할 수 있어요.',
   rate_limited:'요청이 많아요. 잠시 후 다시 눌러 주세요.',
   session_expired:'다시 로그인한 뒤 시도해 주세요.',
   refused:'이 질문에는 답할 수 없어요.',
   invalid_json:'답을 읽지 못했어요. 한 번 더 눌러 주세요.',
+  timeout:'AI 답이 늦어요.',
 };
 const EXAMPLES = ['이번 주 마감 뭐 있어?', '시험 언제야?', '도서관 몇 시까지야?'];
 const clip = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n) + '…' : s; };
@@ -2022,16 +2026,34 @@ function showAnswer(r, by){
     ${ids.length ? `<div class="refs">${ids.map(id => { const it = byId(id); return `<button type="button" class="ref" data-id="${esc(id)}"><span>${esc(it.title)}</span>${badgeHTML(it)}<em>›</em></button>`; }).join('')}</div>` : ''}`;
   $('#ans').hidden = false;
 }
+/* 중계 서버에 질문 + 안내 목록을 보냄. 규칙(프롬프트)은 서버가 붙임. 20초 안에 답이 없으면 포기 */
+async function askServer(q, signal){
+  let late = false;
+  const timer = setTimeout(() => { late = true; ctl?.abort(); }, 20000);
+  try {
+    const res = await fetch(AI_ENDPOINT, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, signal,
+      body: JSON.stringify({ q, grade: state.grade, today: `${iso(TODAY)}(${'일월화수목금토'[TODAY.getDay()]}요일)`, list: contextText() }),
+    });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw { code: r.error || 'server' };
+    return r;
+  } catch (e) {
+    if (e?.name === 'AbortError') throw { code: late ? 'timeout' : 'cancelled' };
+    throw e?.code ? e : { code: 'network' };
+  } finally { clearTimeout(timer); }
+}
 async function runAsk(q){
   if (busy){ ctl?.abort(); return; }
   q = String(q || '').trim().slice(0, 200);
   if (!q){ setStatus('질문을 적어 주세요.', true); return; }
   $('#ans').hidden = true;
-  if (!sample){ showAnswer(localAnswer(q), '찾은 안내'); setStatus(''); return; }
+  if (!sample && !AI_ENDPOINT){ showAnswer(localAnswer(q), '찾은 안내'); setStatus(''); return; }
   busy = true; ctl = new AbortController(); $('#askGo').textContent = '그만';
   setStatus('<span class="spinner"></span>안내문을 읽고 있어요…');
   try {
-    const r = await sample.json(buildPrompt(q), { modelTier:'quick', signal: ctl.signal });
+    /* Claude 화면이면 Claude에게, 아니면 중계 서버(Gemini)에게 묻기 */
+    const r = sample ? await sample.json(buildPrompt(q), { modelTier:'quick', signal: ctl.signal }) : await askServer(q, ctl.signal);
     const answer = typeof r?.answer === 'string' ? r.answer.trim() : '';
     if (!answer) throw {code:'invalid_json'};
     showAnswer({answer, ids:r.ids}, 'AI 답변'); setStatus('');
