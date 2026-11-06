@@ -17,6 +17,9 @@
 const FALLBACK_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
 /* Cloudflare 무료로 쓸 수 있는 모델. 첫 모델이 실패하면 다음 모델 */
 const CF_MODELS = ['@cf/google/gemma-4-26b-a4b-it', '@cf/zai-org/glm-4.7-flash'];
+/* 팀이 품질을 비교해 볼 수 있게 허용한 무료 모델 (요청의 model 값이 이 목록에 있을 때만 사용) */
+const CF_ALLOWED = [...CF_MODELS, '@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-4-scout-17b-16e-instruct',
+  '@cf/mistralai/mistral-small-3.1-24b-instruct', '@cf/qwen/qwen3-30b-a3b-fp8', '@cf/google/gemma-3-12b-it'];
 const DEFAULT_ORIGIN = 'https://jhjhjhjh4040-commits.github.io';
 
 /* 앱의 Claude 버전과 같은 규칙. 질문·학년·목록만 받고 규칙은 서버가 붙여서, 다른 용도로 키를 쓰지 못하게 함 */
@@ -48,8 +51,8 @@ function parseAnswer(text) {
   for (const blk of blocks.reverse()) {
     try {
       const r = JSON.parse(blk);
-      if (typeof r.answer === 'string' && r.answer.trim())
-        return { answer: r.answer.trim(), ids: Array.isArray(r.ids) ? r.ids.filter(x => typeof x === 'string').slice(0, 3) : [] };
+      if (typeof r.answer === 'string' && r.answer.replace(/[.\s…]/g, '').length >= 2)
+        return { raw: t.slice(-400), answer: r.answer.trim(), ids: Array.isArray(r.ids) ? r.ids.filter(x => typeof x === 'string' && /^[a-z]\d/.test(x)).slice(0, 3) : [] };
     } catch {}
   }
   return { error: 'invalid_json', raw: t.slice(0, 300) };   // raw: 원인 확인용으로 AI가 실제로 보낸 앞부분
@@ -84,7 +87,7 @@ async function callWorkersAI(model, prompt, ai) {
   try {
     const out = await ai.run(model, {
       messages: [
-        { role: 'system', content: 'Reply with one JSON object only, like {"answer":"...","ids":["..."]}. No other text.' },
+        { role: 'system', content: '한국어로 답하고, 설명 없이 JSON 객체 하나만 출력해라. answer에는 실제 답 문장을, ids에는 근거 글 id를 넣어라.' },
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
@@ -127,11 +130,12 @@ export default {
     /* 시도 순서: Gemini 모델들 → Cloudflare AI. 하나라도 성공하면 바로 답함 */
     const tries = [];
     if (env.GEMINI_API_KEY) for (const m of (env.MODEL ? [env.MODEL] : FALLBACK_MODELS)) tries.push([m, () => callGemini(m, prompt, env.GEMINI_API_KEY)]);
-    if (env.AI) for (const m of (env.AI_MODEL ? [env.AI_MODEL] : CF_MODELS)) tries.push([m, () => callWorkersAI(m, prompt, env.AI)]);
+    const pick = CF_ALLOWED.includes(body?.model) ? [body.model] : null;
+    if (env.AI) for (const m of (pick || (env.AI_MODEL ? [env.AI_MODEL] : CF_MODELS))) tries.push([m, () => callWorkersAI(m, prompt, env.AI)]);
     let last = { error: 'upstream' };
     for (const [m, run] of tries) {
       last = await run();
-      if (!last.error) return json({ ...last, model: m }, 200, cors);
+      if (!last.error) return json({ answer: last.answer, ids: last.ids, model: m, ...(body?.debug ? { raw: last.raw } : {}) }, 200, cors);
     }
     return json({ error: last.error, raw: last.raw }, last.error === 'rate_limited' ? 429 : 502, cors);
   },
