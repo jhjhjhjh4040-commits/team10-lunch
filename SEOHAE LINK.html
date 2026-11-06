@@ -162,6 +162,9 @@ dl.facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
 .grab-area small{font-size:11.5px;color:var(--mute)}
 .sheet.drag{transition:none}
 .sheet.back{transition:transform .2s ease}
+.gpick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gpick button{border:1px solid var(--line);background:var(--bg);border-radius:14px;padding:16px 0;font-size:17px;font-weight:700;color:var(--ink)}
+.gpick button:hover{border-color:var(--green);background:var(--green-soft);color:var(--green)}
 </style>
 </head>
 <body>
@@ -1900,7 +1903,8 @@ function showSheet(html, full){
   dragClose($('#grab'));
   ($('#sheet').querySelector('[data-autofocus]') || $('#sheet').querySelector('button'))?.focus();
 }
-function closeSheet(){ if (busy) ctl?.abort(); $('#scrim').hidden = true; $('#sheet').hidden = true; $('#sheet').style.transform = ''; lastFocus?.focus?.(); }
+let onSheetClose = null;
+function closeSheet(){ if (onSheetClose){ const f = onSheetClose; onSheetClose = null; f(); } if (busy) ctl?.abort(); $('#scrim').hidden = true; $('#sheet').hidden = true; $('#sheet').style.transform = ''; lastFocus?.focus?.(); }
 /* 손잡이를 잡고 아래로 끌기: 100px 넘게 끌거나 빠르게 내리면 닫고, 아니면 제자리로 */
 function dragClose(handle){
   const sh = $('#sheet'); let y0 = null, t0 = 0, dy = 0;
@@ -1986,7 +1990,7 @@ function buildPrompt(q){
 - "제목만 확인"이 붙은 글은 세부 내용을 모르니 원문 확인을 안내해라.
 - 학년이 맞지 않는 활동은 추천하지 마라. 마감이 지난 것은 지났다고 말해라. 분류가 '학교 일정'이면 '날짜'가 그날이다.
 - 해요체로 1~2문장, 40자 안팎으로 아주 짧게. 날짜는 M/D(요일). 공문투·이모지 금지.
-- JSON 객체 하나만 답해라: {"answer":"답변","ids":["근거가 된 글의 id 0~3개"]}. id는 목록에 있는 것만.
+- JSON 객체 하나만 답해라: {"answer":"답변","ids":["근거가 된 글의 id 0~3개"]}. id는 목록에 있는 것만. 글 id는 ids에만 넣고 answer 문장에는 쓰지 마라.
 
 [안내 목록]
 ${contextText()}
@@ -2025,7 +2029,10 @@ function openAsk(){
     <div id="ans" hidden></div>
     <p class="foot">${state.grade}학년 기준 · 서해고 홈페이지 안내문으로만 답해요.</p>`, true);
 }
+/* AI가 답 문장 안에 쓴 글 번호([s528359], (k1207) 등)를 지움. 근거 글은 아래 링크로 따로 보여 줌 */
+const stripIds = t => String(t || '').replace(/\s*[\[(]\s*[skc]\d{3,}(\s*,\s*[skc]\d{3,})*\s*[\])]/g, '').replace(/\b[skc]\d{4,}\b\s*/g, '').replace(/\s{2,}/g, ' ').trim();
 function showAnswer(r, by){
+  r = { ...r, answer: stripIds(r.answer) || r.answer };
   const ids = (Array.isArray(r.ids) ? r.ids : []).filter(id => byId(id)).slice(0, 3);
   $('#ans').innerHTML = `<div class="say"><small>${by}</small><p>${esc(r.answer)}</p></div>
     ${ids.length ? `<div class="refs">${ids.map(id => { const it = byId(id); return `<button type="button" class="ref" data-id="${esc(id)}"><span>${esc(it.title)}</span>${badgeHTML(it)}<em>›</em></button>`; }).join('')}</div>` : ''}`;
@@ -2055,7 +2062,10 @@ async function runAsk(q){
   $('#ans').hidden = true;
   if (!sample && !AI_ENDPOINT){ showAnswer(localAnswer(q), '찾은 안내'); setStatus(''); return; }
   busy = true; ctl = new AbortController(); $('#askGo').textContent = '그만';
-  setStatus('<span class="spinner"></span>안내문을 읽고 있어요…');
+  /* 기다리는 동안 검색 답을 먼저 보여 주고, AI 답이 오면 바꿔 끼움 */
+  const quick = localAnswer(q);
+  showAnswer(quick, '먼저 찾은 안내');
+  setStatus('<span class="spinner"></span>AI가 더 정확히 확인하고 있어요…');
   try {
     /* Claude 화면이면 Claude에게, 아니면 중계 서버(Gemini)에게 묻기 */
     const r = sample ? await sample.json(buildPrompt(q), { modelTier:'quick', signal: ctl.signal }) : await askServer(q, ctl.signal);
@@ -2063,8 +2073,10 @@ async function runAsk(q){
     if (!answer) throw {code:'invalid_json'};
     showAnswer({answer, ids:r.ids}, 'AI 답변'); setStatus('');
   } catch (e) {
-    if (e?.code === 'cancelled') setStatus('멈췄어요.');
-    else { showAnswer(localAnswer(q), '찾은 안내'); setStatus(ERR[e?.code] ? ERR[e.code] + ' 대신 검색 결과를 보여 드려요.' : 'AI 연결이 안 돼서 검색 결과를 보여 드려요.', true); }
+    /* 실패하거나 멈추면 이미 보여 준 검색 답을 그대로 둠 */
+    showAnswer(quick, '찾은 안내');
+    if (e?.code === 'cancelled') setStatus('AI 확인을 멈췄어요.');
+    else setStatus(ERR[e?.code] ? ERR[e.code] + ' 검색 결과를 보여 드려요.' : 'AI 연결이 안 돼서 검색 결과를 보여 드려요.', true);
   } finally { busy = false; const b = $('#askGo'); if (b) b.textContent = '묻기'; }
 }
 
@@ -2079,6 +2091,7 @@ function render(){ $('#whoLabel').textContent = `${state.grade}학년`; state.ta
 
 document.addEventListener('click', e => {
   const t = e.target;
+  const gp = t.closest('[data-grade]'); if (gp){ state.grade = +gp.dataset.grade; persist(); closeSheet(); return render(); }
   const tab = t.closest('nav.tabs [data-tab]'); if (tab) return setTab(tab.dataset.tab);
   const wk = t.closest('[data-week]'); if (wk){ state.week = Math.min(MAX_WEEK, Math.max(0, state.week + +wk.dataset.week)); return renderHome(); }
   const sg = t.closest('[data-seg]'); if (sg){ state.seg = sg.dataset.seg; state.cat = 'all'; state.page = 0; return renderAll(); }
@@ -2102,6 +2115,13 @@ $('#whoBtn').addEventListener('click', () => { state.grade = state.grade % 3 + 1
 let raf = 0;
 new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(render); }).observe($('#main'));
 render();
+/* 처음 연 사람(저장된 학년 없음)에게 학년을 한 번 물어봄. 고르지 않고 닫으면 2학년으로 저장 */
+function askGrade(){
+  showSheet(`<h3>몇 학년이에요?</h3><p class="foot" style="font-size:14px">학년에 맞는 안내만 골라 보여 드려요. 오른쪽 위 버튼으로 언제든 바꿀 수 있어요.</p>
+    <div class="gpick">${[1,2,3].map(g => `<button type="button" data-grade="${g}">${g}학년</button>`).join('')}</div>`);
+  onSheetClose = () => { persist(); };
+}
+if (![1,2,3].includes(saved.grade)) askGrade();
 (async () => { try { sample = await window.claude?.use?.('sample'); } catch { sample = null; } })();
 </script>
 </body>
