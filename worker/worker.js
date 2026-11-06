@@ -10,12 +10,13 @@
 
   그 밖의 선택 설정 (Text):
     MODEL           Gemini 모델 이름. 비우면 아래 FALLBACK_MODELS를 차례로 시도
-    AI_MODEL        Cloudflare AI 모델 이름. 비우면 DEFAULT_CF_MODEL
+    AI_MODEL        Cloudflare AI 모델 이름. 비우면 아래 CF_MODELS를 차례로 시도
     ALLOWED_ORIGIN  앱 주소. 기본값은 팀 GitHub Pages
 */
 
 const FALLBACK_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
-const DEFAULT_CF_MODEL = '@cf/google/gemma-4-26b-a4b-it';   // Cloudflare 무료 사용량 안에서 쓸 수 있는 모델
+/* Cloudflare 무료로 쓸 수 있는 모델. 첫 모델이 실패하면 다음 모델 */
+const CF_MODELS = ['@cf/google/gemma-4-26b-a4b-it', '@cf/zai-org/glm-4.7-flash'];
 const DEFAULT_ORIGIN = 'https://jhjhjhjh4040-commits.github.io';
 
 /* 앱의 Claude 버전과 같은 규칙. 질문·학년·목록만 받고 규칙은 서버가 붙여서, 다른 용도로 키를 쓰지 못하게 함 */
@@ -39,16 +40,28 @@ ${list}
 const json = (body, status, cors) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
 
-/* AI가 돌려준 글에서 {answer, ids}를 꺼냄. 코드블록(```)이나 앞뒤 설명이 붙어 있어도 첫 { ~ 마지막 } 만 읽음 */
+/* AI가 돌려준 글에서 {answer, ids}를 꺼냄.
+   생각 과정·코드블록·앞뒤 설명이 섞여 있어도 "answer"가 들어간 { } 덩어리 중 마지막 것을 읽음 */
 function parseAnswer(text) {
-  try {
-    const t = String(text || '');
-    const r = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
-    if (typeof r.answer !== 'string' || !r.answer.trim()) return { error: 'invalid_json' };
-    return { answer: r.answer.trim(), ids: Array.isArray(r.ids) ? r.ids.filter(x => typeof x === 'string').slice(0, 3) : [] };
-  } catch {
-    return { error: 'invalid_json' };
+  const t = String(text || '');
+  const blocks = t.match(/\{[^{}]*"answer"[^{}]*\}/g) || [];
+  for (const blk of blocks.reverse()) {
+    try {
+      const r = JSON.parse(blk);
+      if (typeof r.answer === 'string' && r.answer.trim())
+        return { answer: r.answer.trim(), ids: Array.isArray(r.ids) ? r.ids.filter(x => typeof x === 'string').slice(0, 3) : [] };
+    } catch {}
   }
+  return { error: 'invalid_json', raw: t.slice(0, 300) };   // raw: 원인 확인용으로 AI가 실제로 보낸 앞부분
+}
+
+/* 응답 안의 글자를 꺼냄. 모델마다 모양이 달라서 여러 곳을 확인 */
+function textOf(out) {
+  const msg = out?.choices?.[0]?.message;
+  let c = msg?.content ?? out?.response ?? out?.output_text ?? '';
+  if (Array.isArray(c)) c = c.map(p => (typeof p === 'string' ? p : p?.text || '')).join('');
+  if (!c && msg?.reasoning_content) c = msg.reasoning_content;   // 생각만 하고 답칸이 비었을 때
+  return typeof c === 'string' ? c : JSON.stringify(c);
 }
 
 /* Gemini 한 번 호출. 실패하면 {error, status}를 돌려줌 */
@@ -66,14 +79,21 @@ async function callGemini(model, prompt, key) {
   return parseAnswer((data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join(''));
 }
 
-/* Cloudflare 자체 AI 한 번 호출 (env.AI 연결 필요). 응답은 OpenAI 모양(choices[0].message.content)이고, 옛 모델은 response 필드 */
+/* Cloudflare 자체 AI 한 번 호출 (env.AI 연결 필요) */
 async function callWorkersAI(model, prompt, ai) {
   try {
-    const out = await ai.run(model, { messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_completion_tokens: 512 });
-    return parseAnswer(out?.choices?.[0]?.message?.content ?? out?.response ?? '');
+    const out = await ai.run(model, {
+      messages: [
+        { role: 'system', content: 'Reply with one JSON object only, like {"answer":"...","ids":["..."]}. No other text.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.2,
+      max_completion_tokens: 1024,   // 생각하는 모델은 답 전에 글자를 많이 써서 넉넉하게
+    });
+    return parseAnswer(textOf(out));
   } catch (e) {
     /* 하루 무료 사용량(뉴런)을 넘었거나 자리가 없을 때의 오류는 '요청 많음'으로 */
-    return { error: /4006|neuron|limit|capacity|3040|429/i.test(String(e?.message)) ? 'rate_limited' : 'upstream' };
+    return { error: /4006|neuron|limit|capacity|3040|429/i.test(String(e?.message)) ? 'rate_limited' : 'upstream', raw: String(e?.message || '').slice(0, 200) };
   }
 }
 
@@ -107,12 +127,12 @@ export default {
     /* 시도 순서: Gemini 모델들 → Cloudflare AI. 하나라도 성공하면 바로 답함 */
     const tries = [];
     if (env.GEMINI_API_KEY) for (const m of (env.MODEL ? [env.MODEL] : FALLBACK_MODELS)) tries.push([m, () => callGemini(m, prompt, env.GEMINI_API_KEY)]);
-    if (env.AI) { const m = env.AI_MODEL || DEFAULT_CF_MODEL; tries.push([m, () => callWorkersAI(m, prompt, env.AI)]); }
+    if (env.AI) for (const m of (env.AI_MODEL ? [env.AI_MODEL] : CF_MODELS)) tries.push([m, () => callWorkersAI(m, prompt, env.AI)]);
     let last = { error: 'upstream' };
     for (const [m, run] of tries) {
       last = await run();
       if (!last.error) return json({ ...last, model: m }, 200, cors);
     }
-    return json({ error: last.error }, last.error === 'rate_limited' ? 429 : 502, cors);
+    return json({ error: last.error, raw: last.raw }, last.error === 'rate_limited' ? 429 : 502, cors);
   },
 };
