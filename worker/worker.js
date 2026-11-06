@@ -20,6 +20,8 @@ const CF_MODELS = ['@cf/qwen/qwen3-30b-a3b-fp8', '@cf/mistralai/mistral-small-3.
 /* 팀이 품질을 비교해 볼 수 있게 허용한 무료 모델 (요청의 model 값이 이 목록에 있을 때만 사용) */
 const CF_ALLOWED = [...CF_MODELS, '@cf/google/gemma-4-26b-a4b-it', '@cf/zai-org/glm-4.7-flash', '@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-4-scout-17b-16e-instruct',
   '@cf/mistralai/mistral-small-3.1-24b-instruct', '@cf/qwen/qwen3-30b-a3b-fp8', '@cf/google/gemma-3-12b-it'];
+/* AI가 형식 설명을 베껴 쓴 가짜 답 */
+const PLACEHOLDER = /^(답변|답|answer|실제 답 문장|학생에게 보여 줄 실제 답 문장)[.]?$/i;
 const DEFAULT_ORIGIN = 'https://jhjhjhjh4040-commits.github.io';
 
 /* 앱의 Claude 버전과 같은 규칙. 질문·학년·목록만 받고 규칙은 서버가 붙여서, 다른 용도로 키를 쓰지 못하게 함 */
@@ -32,7 +34,7 @@ function buildPrompt({ q, grade, today, list }) {
 - "제목만 확인"이 붙은 글은 세부 내용을 모르니 원문 확인을 안내해라.
 - 학년이 맞지 않는 활동은 추천하지 마라. 마감이 지난 것은 지났다고 말해라. 분류가 '학교 일정'이면 '날짜'가 그날이다.
 - 해요체로 1~2문장, 40자 안팎으로 아주 짧게. 날짜는 M/D(요일). 공문투·이모지 금지.
-- JSON 객체 하나만 답해라: {"answer":"답변","ids":["근거가 된 글의 id 0~3개"]}. id는 목록에 있는 것만. 글 id는 ids에만 넣고 answer 문장에는 쓰지 마라.
+- 키가 answer와 ids 두 개뿐인 JSON 객체 하나만 답해라. answer = 학생에게 보여 줄 실제 답 문장, ids = 근거가 된 글 id 배열(0~3개, 목록에 있는 것만). 글 id는 answer 문장에 쓰지 마라.
 
 [안내 목록]
 ${list}
@@ -51,7 +53,7 @@ function parseAnswer(text) {
   for (const blk of blocks.reverse()) {
     try {
       const r = JSON.parse(blk);
-      if (typeof r.answer === 'string' && r.answer.replace(/[.\s…]/g, '').length >= 2)
+      if (typeof r.answer === 'string' && r.answer.replace(/[.\s…]/g, '').length >= 2 && !PLACEHOLDER.test(r.answer.trim()))
         return { raw: t.slice(-400), answer: r.answer.trim(), ids: Array.isArray(r.ids) ? r.ids.filter(x => typeof x === 'string' && /^[a-z]\d/.test(x)).slice(0, 3) : [] };
     } catch {}
   }
@@ -77,7 +79,10 @@ async function callGemini(model, prompt, key) {
       generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens: 1024 },
     }),
   });
-  if (!res.ok) return { error: res.status === 429 ? 'rate_limited' : 'upstream', status: res.status };
+  if (!res.ok) {
+    const why = await res.json().catch(() => ({}));
+    return { error: res.status === 429 ? 'rate_limited' : 'upstream', status: res.status, raw: `gemini ${model} ${res.status}: ${String(why?.error?.message || '').slice(0, 160)}` };
+  }
   const data = await res.json();
   return parseAnswer((data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join(''));
 }
@@ -100,6 +105,25 @@ async function callWorkersAI(model, prompt, ai) {
   }
 }
 
+/* 이 키로 쓸 수 있는 Gemini 모델 목록 (글 생성 가능한 flash 계열). 한 번 찾으면 기억해 둠 */
+let geminiCache = null;
+async function listGemini(key) {
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, status: res.status, message: String(data?.error?.message || '').slice(0, 200), models: [] };
+  const models = (data.models || [])
+    .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+    .map(m => String(m.name).replace(/^models\//, ''))
+    .filter(n => /^gemini-[\d.]+-flash(-lite)?$/.test(n))   // 정식 flash·flash-lite만 (미리보기·실험판 제외)
+    .sort((a, b) => parseFloat(b.slice(7)) - parseFloat(a.slice(7)) || (b.endsWith('lite') - a.endsWith('lite')));
+  return { ok: true, status: res.status, models };
+}
+async function geminiModels(env) {
+  if (env.MODEL) return [env.MODEL];
+  if (!geminiCache) { const l = await listGemini(env.GEMINI_API_KEY); if (l.ok && l.models.length) geminiCache = l.models.slice(0, 2); }
+  return geminiCache || FALLBACK_MODELS;
+}
+
 export default {
   async fetch(request, env) {
     const origin = env.ALLOWED_ORIGIN || DEFAULT_ORIGIN;
@@ -110,7 +134,19 @@ export default {
       'vary': 'origin',
     };
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method !== 'POST') return json({ ok: true, info: 'SEOHAE LINK AI 중계 서버. POST로 질문을 보내세요.' }, 200, cors);
+    if (request.method !== 'POST') {
+      /* 점검: 주소 뒤에 ?check=1 을 붙여 열면 AI 연결 상태를 보여 줌 (키 값은 보여 주지 않음) */
+      if (new URL(request.url).searchParams.has('check')) {
+        const out = { cloudflareAI: !!env.AI, geminiKey: !!env.GEMINI_API_KEY,
+          otherVariables: Object.keys(env).filter(k => !['AI', 'GEMINI_API_KEY'].includes(k)) };
+        if (env.GEMINI_API_KEY) {
+          const l = await listGemini(env.GEMINI_API_KEY);
+          out.gemini = { keyAccepted: l.ok, status: l.status, message: l.message, usableModels: l.models, willUse: env.MODEL ? [env.MODEL] : (l.models.length ? l.models.slice(0, 2) : FALLBACK_MODELS) };
+        }
+        return json(out, 200, { ...cors, 'access-control-allow-origin': '*' });
+      }
+      return json({ ok: true, info: 'SEOHAE LINK AI 중계 서버. POST로 질문을 보내세요. 연결 점검은 주소 뒤에 ?check=1' }, 200, cors);
+    }
 
     /* 팀 앱 주소에서 온 요청만 받음 (브라우저 기준) */
     const from = request.headers.get('origin');
@@ -128,15 +164,24 @@ export default {
 
     const prompt = buildPrompt({ q, grade, today, list });
     /* 시도 순서: Gemini 모델들 → Cloudflare AI. 하나라도 성공하면 바로 답함 */
+    /* model 값: 'gemini' 또는 'gemini-…' = Gemini만 / 허용 목록의 Cloudflare 모델 = Gemini 다음에 그 모델 */
+    const want = String(body?.model || '');
+    const geminiOnly = want === 'gemini' || /^gemini-[\w.-]+$/.test(want);
     const tries = [];
-    if (env.GEMINI_API_KEY) for (const m of (env.MODEL ? [env.MODEL] : FALLBACK_MODELS)) tries.push([m, () => callGemini(m, prompt, env.GEMINI_API_KEY)]);
-    const pick = CF_ALLOWED.includes(body?.model) ? [body.model] : null;
-    if (env.AI) for (const m of (pick || (env.AI_MODEL ? [env.AI_MODEL] : CF_MODELS))) tries.push([m, () => callWorkersAI(m, prompt, env.AI)]);
+    if (env.GEMINI_API_KEY) {
+      const gm = want.startsWith('gemini-') ? [want] : await geminiModels(env);
+      for (const m of gm) tries.push([m, () => callGemini(m, prompt, env.GEMINI_API_KEY)]);
+    }
+    const pick = CF_ALLOWED.includes(want) ? [want] : null;
+    if (env.AI && !geminiOnly) for (const m of (pick || (env.AI_MODEL ? [env.AI_MODEL] : CF_MODELS))) tries.push([m, () => callWorkersAI(m, prompt, env.AI)]);
+    if (!tries.length) return json({ error: 'no_ai' }, 500, cors);
     let last = { error: 'upstream' };
+    const failed = [];   // 앞에서 실패한 모델과 이유 (원인 확인용)
     for (const [m, run] of tries) {
       last = await run();
-      if (!last.error) return json({ answer: last.answer, ids: last.ids, model: m, ...(body?.debug ? { raw: last.raw } : {}) }, 200, cors);
+      if (!last.error) return json({ answer: last.answer, ids: last.ids, model: m, ...(failed.length ? { skipped: failed } : {}), ...(body?.debug ? { raw: last.raw } : {}) }, 200, cors);
+      failed.push(`${m}: ${last.error}${last.raw ? ' ' + String(last.raw).slice(0, 120) : ''}`);
     }
-    return json({ error: last.error, raw: last.raw }, last.error === 'rate_limited' ? 429 : 502, cors);
+    return json({ error: last.error, raw: last.raw, skipped: failed }, last.error === 'rate_limited' ? 429 : 502, cors);
   },
 };
