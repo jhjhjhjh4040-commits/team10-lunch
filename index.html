@@ -1953,6 +1953,8 @@ let sample = null, ctl = null, busy = false;
 /* Claude 밖(GitHub Pages)에서 쓸 AI 중계 서버 주소. Cloudflare Worker를 올린 뒤 주소를 넣는다 (예: 'https://seohae-link-ai.계정.workers.dev').
    비어 있으면 AI 없이 키워드 검색으로만 답함 */
 const AI_ENDPOINT = 'https://seohaelink.jhjhjhjh4040.workers.dev';
+/* 중계 서버에서 쓸 Cloudflare 무료 모델. 2026-11-06 모델 5개 비교에서 정확도·속도가 가장 나았던 모델 */
+const AI_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
 const ERR = {
   not_granted:'Claude 사용을 허용해야 AI가 답할 수 있어요.',
   rate_limited:'요청이 많아요. 잠시 후 다시 눌러 주세요.',
@@ -2033,7 +2035,7 @@ async function askServer(q, signal){
   try {
     const res = await fetch(AI_ENDPOINT, {
       method: 'POST', headers: { 'content-type': 'application/json' }, signal,
-      body: JSON.stringify({ q, grade: state.grade, today: `${iso(TODAY)}(${'일월화수목금토'[TODAY.getDay()]}요일)`, list: contextText() }),
+      body: JSON.stringify({ q, model: AI_MODEL, grade: state.grade, today: `${iso(TODAY)}(${'일월화수목금토'[TODAY.getDay()]}요일)`, list: contextText() }),
     });
     const r = await res.json().catch(() => ({}));
     if (!res.ok) throw { code: r.error || 'server' };

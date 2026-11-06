@@ -16,9 +16,9 @@
 
 const FALLBACK_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
 /* Cloudflare 무료로 쓸 수 있는 모델. 첫 모델이 실패하면 다음 모델 */
-const CF_MODELS = ['@cf/google/gemma-4-26b-a4b-it', '@cf/zai-org/glm-4.7-flash'];
+const CF_MODELS = ['@cf/qwen/qwen3-30b-a3b-fp8', '@cf/mistralai/mistral-small-3.1-24b-instruct'];
 /* 팀이 품질을 비교해 볼 수 있게 허용한 무료 모델 (요청의 model 값이 이 목록에 있을 때만 사용) */
-const CF_ALLOWED = [...CF_MODELS, '@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-4-scout-17b-16e-instruct',
+const CF_ALLOWED = [...CF_MODELS, '@cf/google/gemma-4-26b-a4b-it', '@cf/zai-org/glm-4.7-flash', '@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-4-scout-17b-16e-instruct',
   '@cf/mistralai/mistral-small-3.1-24b-instruct', '@cf/qwen/qwen3-30b-a3b-fp8', '@cf/google/gemma-3-12b-it'];
 const DEFAULT_ORIGIN = 'https://jhjhjhjh4040-commits.github.io';
 
