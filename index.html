@@ -1968,8 +1968,11 @@ const clip = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n
 const has = v => v && !String(v).includes('원문에 없음');
 const setStatus = (html, err) => { const s = $('#status'); if (!s) return; s.innerHTML = html; s.classList.toggle('err', !!err); };
 
+/* 2학기 시작일. 이후에 올라온 마감 없는 안내(도서관 이용 시간, 생활규정 등)는 오래돼도 계속 유효해서 AI에게 항상 보냄 */
+const TERM_START = '2026-08-20';
 function contextText(){
-  return ITEMS.filter(i => { const d = daysLeft(i); return isOpen(i) || (d !== null && d >= -14) || (i.posted && age(i) <= 45); })
+  return ITEMS.filter(i => { const d = daysLeft(i); return isOpen(i) || (d !== null && d >= -14) || (i.posted && age(i) <= 45)
+      || (!i.deadline && i.cat !== 'schedule' && (i.posted || '') >= TERM_START); })
     .map(i => `[${i.id}] ${catOf(i.cat).name}|${i.kind === 'do' ? '할 일' : '알아두기'}|${i.aud}|${i.grades.join('·')}학년|${i.cat === 'schedule' ? '날짜' : '마감'} ${i.deadline || '없음'}|게시 ${i.posted || '-'}|${i.status === '제목만' ? '제목만 확인|' : ''}${clip(i.title, 28)}: ${clip(i.one, 36)}`
       + (has(i.when) ? ` / 언제 ${clip(i.when, 36)}` : '') + (has(i.where) ? ` / 장소 ${clip(i.where, 24)}` : '')
       + (has(i.who) ? ` / 대상 ${clip(i.who, 24)}` : '') + (has(i.how) ? ` / 방법 ${clip(i.how, 44)}` : '')).join('\n');
