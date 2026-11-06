@@ -4,13 +4,18 @@
   하는 일: 앱이 보낸 질문과 안내 목록을 받아 Gemini에 묻고, {answer, ids}를 돌려준다.
   왜 필요한가: API 키를 index.html에 넣으면 누구나 볼 수 있다. 키는 이 서버의 비밀 변수에만 둔다.
 
-  Cloudflare 설정(Settings → Variables and Secrets):
-    GEMINI_API_KEY  (Secret, 필수)  Google AI Studio에서 받은 키
-    MODEL           (Text, 선택)    쓸 모델 이름. 비우면 아래 FALLBACK_MODELS를 차례로 시도
-    ALLOWED_ORIGIN  (Text, 선택)    앱 주소. 기본값은 팀 GitHub Pages
+  AI는 두 가지 중 있는 것을 쓴다 (둘 다 있으면 Gemini 먼저, 막히면 Cloudflare AI):
+    1) Cloudflare 자체 AI : Worker 설정의 Bindings에 'Workers AI'를 변수 이름 AI로 추가 (키 필요 없음)
+    2) Gemini            : Settings → Variables and Secrets 에 GEMINI_API_KEY (Secret)
+
+  그 밖의 선택 설정 (Text):
+    MODEL           Gemini 모델 이름. 비우면 아래 FALLBACK_MODELS를 차례로 시도
+    AI_MODEL        Cloudflare AI 모델 이름. 비우면 DEFAULT_CF_MODEL
+    ALLOWED_ORIGIN  앱 주소. 기본값은 팀 GitHub Pages
 */
 
 const FALLBACK_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
+const DEFAULT_CF_MODEL = '@cf/google/gemma-4-26b-a4b-it';   // Cloudflare 무료 사용량 안에서 쓸 수 있는 모델
 const DEFAULT_ORIGIN = 'https://jhjhjhjh4040-commits.github.io';
 
 /* 앱의 Claude 버전과 같은 규칙. 질문·학년·목록만 받고 규칙은 서버가 붙여서, 다른 용도로 키를 쓰지 못하게 함 */
@@ -34,6 +39,18 @@ ${list}
 const json = (body, status, cors) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...cors } });
 
+/* AI가 돌려준 글에서 {answer, ids}를 꺼냄. 코드블록(```)이나 앞뒤 설명이 붙어 있어도 첫 { ~ 마지막 } 만 읽음 */
+function parseAnswer(text) {
+  try {
+    const t = String(text || '');
+    const r = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+    if (typeof r.answer !== 'string' || !r.answer.trim()) return { error: 'invalid_json' };
+    return { answer: r.answer.trim(), ids: Array.isArray(r.ids) ? r.ids.filter(x => typeof x === 'string').slice(0, 3) : [] };
+  } catch {
+    return { error: 'invalid_json' };
+  }
+}
+
 /* Gemini 한 번 호출. 실패하면 {error, status}를 돌려줌 */
 async function callGemini(model, prompt, key) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -46,13 +63,17 @@ async function callGemini(model, prompt, key) {
   });
   if (!res.ok) return { error: res.status === 429 ? 'rate_limited' : 'upstream', status: res.status };
   const data = await res.json();
-  const text = (data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+  return parseAnswer((data?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join(''));
+}
+
+/* Cloudflare 자체 AI 한 번 호출 (env.AI 연결 필요). 응답은 OpenAI 모양(choices[0].message.content)이고, 옛 모델은 response 필드 */
+async function callWorkersAI(model, prompt, ai) {
   try {
-    const r = JSON.parse(text.replace(/^```(json)?|```$/g, '').trim());
-    if (typeof r.answer !== 'string' || !r.answer.trim()) return { error: 'invalid_json' };
-    return { answer: r.answer.trim(), ids: Array.isArray(r.ids) ? r.ids.filter(x => typeof x === 'string').slice(0, 3) : [] };
-  } catch {
-    return { error: 'invalid_json' };
+    const out = await ai.run(model, { messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_completion_tokens: 512 });
+    return parseAnswer(out?.choices?.[0]?.message?.content ?? out?.response ?? '');
+  } catch (e) {
+    /* 하루 무료 사용량(뉴런)을 넘었거나 자리가 없을 때의 오류는 '요청 많음'으로 */
+    return { error: /4006|neuron|limit|capacity|3040|429/i.test(String(e?.message)) ? 'rate_limited' : 'upstream' };
   }
 }
 
@@ -71,7 +92,7 @@ export default {
     /* 팀 앱 주소에서 온 요청만 받음 (브라우저 기준) */
     const from = request.headers.get('origin');
     if (from && from !== origin) return json({ error: 'forbidden_origin' }, 403, cors);
-    if (!env.GEMINI_API_KEY) return json({ error: 'no_key' }, 500, cors);
+    if (!env.GEMINI_API_KEY && !env.AI) return json({ error: 'no_ai' }, 500, cors);
 
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad_request' }, 400, cors); }
@@ -83,12 +104,14 @@ export default {
     if (list.length > 30000) return json({ error: 'too_long' }, 413, cors);
 
     const prompt = buildPrompt({ q, grade, today, list });
-    const models = env.MODEL ? [env.MODEL] : FALLBACK_MODELS;
+    /* 시도 순서: Gemini 모델들 → Cloudflare AI. 하나라도 성공하면 바로 답함 */
+    const tries = [];
+    if (env.GEMINI_API_KEY) for (const m of (env.MODEL ? [env.MODEL] : FALLBACK_MODELS)) tries.push([m, () => callGemini(m, prompt, env.GEMINI_API_KEY)]);
+    if (env.AI) { const m = env.AI_MODEL || DEFAULT_CF_MODEL; tries.push([m, () => callWorkersAI(m, prompt, env.AI)]); }
     let last = { error: 'upstream' };
-    for (const m of models) {
-      last = await callGemini(m, prompt, env.GEMINI_API_KEY);
+    for (const [m, run] of tries) {
+      last = await run();
       if (!last.error) return json({ ...last, model: m }, 200, cors);
-      if (last.error === 'invalid_json') break;   // 모델은 답했지만 형식이 틀림 → 다른 모델 대신 앱의 검색 답변으로
     }
     return json({ error: last.error }, last.error === 'rate_limited' ? 429 : 502, cors);
   },
