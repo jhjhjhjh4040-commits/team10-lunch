@@ -31,6 +31,13 @@ AI는 둘 중 **있는 것**을 써요. 둘 다 있으면 Gemini를 먼저 쓰�
 3. Type **Secret**, 이름 `GEMINI_API_KEY`, 값에 키 → **Deploy**
 4. 키는 채팅, 카톡, GitHub에 붙여 넣지 마세요.
 
+## 2-C. Gemini 지역 차단 대책 ("User location is not supported"가 뜰 때)
+한국 요청이 홍콩 쪽 서버에서 처리되면 Gemini가 거절해요. Gemini 호출만 미국 서버를 거치게 해요.
+1. 중계 칸(Durable Object)은 대시보드에서 처음 만들 수 없어서, 이 폴더의 `wrangler.toml`로 올려요.
+2. Worker **Settings → Build → Connect** → GitHub 저장소 `team10-lunch` 선택
+3. Root directory `worker`, Deploy command `npx wrangler deploy` → 저장 (저장소에 푸시할 때마다 자동으로 다시 올라감)
+4. 주소 뒤에 `?check=1`을 열어 `usProxy: true`, `geminiCalledFrom`이 `○○○ / US`인지 확인
+
 ## 3. 앱에 주소 넣기
 Worker 주소를 Claude에게 알려 주면 `index.html`의 `AI_ENDPOINT`에 넣고 다시 올려요.
 

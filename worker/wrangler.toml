@@ -1,0 +1,25 @@
+# SEOHAE LINK 중계 서버 설정 (wrangler로 올릴 때만 사용)
+# 대시보드에 있는 Worker(seohaelink)를 그대로 덮어쓰되, 기존 설정은 유지한다.
+name = "seohaelink"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+# 대시보드에서 만든 변수(MODEL 등)를 지우지 않음. Secret(GEMINI_API_KEY)은 원래 유지됨
+keep_vars = true
+
+# 기존 설정과 같게 유지
+[placement]
+mode = "smart"
+
+[ai]
+binding = "AI"
+
+# Gemini 호출을 미국에서 하게 하는 중계 칸
+[[durable_objects.bindings]]
+name = "GEMINI_DO"
+class_name = "GeminiProxy"
+
+# 처음 한 번 GeminiProxy 칸을 만들기 (무료 요금제는 sqlite 방식)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GeminiProxy"]

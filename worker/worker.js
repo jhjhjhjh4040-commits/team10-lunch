@@ -12,7 +12,28 @@
     MODEL           Gemini 모델 이름. 비우면 아래 FALLBACK_MODELS를 차례로 시도
     AI_MODEL        Cloudflare AI 모델 이름. 비우면 아래 CF_MODELS를 차례로 시도
     ALLOWED_ORIGIN  앱 주소. 기본값은 팀 GitHub Pages
+
+  Gemini 지역 차단 대책 (선택, Bindings에 Durable Object 추가):
+    한국 요청을 홍콩 쪽 서버가 처리하면 Gemini가 "User location is not supported"로 거절한다.
+    Bindings → Durable Object, 변수 이름 GEMINI_DO, 클래스 GeminiProxy 를 추가하면
+    Gemini 호출만 미국 서부(wnam)에 고정된 GeminiProxy를 거쳐 나간다. 없으면 지금처럼 직접 호출.
 */
+
+import { DurableObject } from 'cloudflare:workers';
+
+/* 미국에 한 번 만들어지면 계속 미국에 있는 중계 칸. 받은 요청을 그대로 Google에 전달만 함 */
+export class GeminiProxy extends DurableObject {
+  async fetch(request) {
+    return fetch(request);
+  }
+}
+
+/* Gemini로 가는 요청: GEMINI_DO가 연결돼 있으면 미국 중계 칸을 거치고, 없으면 직접 보냄 */
+function gfetch(env, url, init) {
+  if (!env.GEMINI_DO) return fetch(url, init);
+  const stub = env.GEMINI_DO.get(env.GEMINI_DO.idFromName('gemini-us'), { locationHint: 'wnam' });
+  return stub.fetch(new Request(url, init));
+}
 
 const FALLBACK_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.5-flash'];
 /* Cloudflare 무료로 쓸 수 있는 모델. 첫 모델이 실패하면 다음 모델 */
@@ -70,8 +91,8 @@ function textOf(out) {
 }
 
 /* Gemini 한 번 호출. 실패하면 {error, status}를 돌려줌 */
-async function callGemini(model, prompt, key) {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+async function callGemini(model, prompt, key, env) {
+  const res = await gfetch(env, `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify({
@@ -107,8 +128,8 @@ async function callWorkersAI(model, prompt, ai) {
 
 /* 이 키로 쓸 수 있는 Gemini 모델 목록 (글 생성 가능한 flash 계열). 한 번 찾으면 기억해 둠 */
 let geminiCache = null;
-async function listGemini(key) {
-  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
+async function listGemini(key, env) {
+  const res = await gfetch(env, 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, status: res.status, message: String(data?.error?.message || '').slice(0, 200), models: [] };
   const models = (data.models || [])
@@ -120,7 +141,7 @@ async function listGemini(key) {
 }
 async function geminiModels(env) {
   if (env.MODEL) return [env.MODEL];
-  if (!geminiCache) { const l = await listGemini(env.GEMINI_API_KEY); if (l.ok && l.models.length) geminiCache = l.models.slice(0, 2); }
+  if (!geminiCache) { const l = await listGemini(env.GEMINI_API_KEY, env); if (l.ok && l.models.length) geminiCache = l.models.slice(0, 2); }
   return geminiCache || FALLBACK_MODELS;
 }
 
@@ -138,9 +159,15 @@ export default {
       /* 점검: 주소 뒤에 ?check=1 을 붙여 열면 AI 연결 상태를 보여 줌 (키 값은 보여 주지 않음) */
       if (new URL(request.url).searchParams.has('check')) {
         const out = { cloudflareAI: !!env.AI, geminiKey: !!env.GEMINI_API_KEY,
-          otherVariables: Object.keys(env).filter(k => !['AI', 'GEMINI_API_KEY'].includes(k)) };
+          otherVariables: Object.keys(env).filter(k => !['AI', 'GEMINI_API_KEY', 'GEMINI_DO'].includes(k)),
+          usProxy: !!env.GEMINI_DO, workerAt: request.cf?.colo };
+        /* Gemini를 부르는 곳의 위치 (Cloudflare 데이터센터 코드·국가). 미국(US)이어야 Gemini가 받아 줌 */
+        try {
+          const tr = await (await gfetch(env, 'https://www.cloudflare.com/cdn-cgi/trace')).text();
+          out.geminiCalledFrom = (tr.match(/colo=(\w+)/)?.[1] || '?') + ' / ' + (tr.match(/loc=(\w+)/)?.[1] || '?');
+        } catch (e) { out.geminiCalledFrom = 'error: ' + String(e?.message || e).slice(0, 120); }
         if (env.GEMINI_API_KEY) {
-          const l = await listGemini(env.GEMINI_API_KEY);
+          const l = await listGemini(env.GEMINI_API_KEY, env);
           out.gemini = { keyAccepted: l.ok, status: l.status, message: l.message, usableModels: l.models, willUse: env.MODEL ? [env.MODEL] : (l.models.length ? l.models.slice(0, 2) : FALLBACK_MODELS) };
         }
         return json(out, 200, { ...cors, 'access-control-allow-origin': '*' });
@@ -172,7 +199,7 @@ export default {
     const cfOnly = body?.skipGemini === true && CF_ALLOWED.includes(want);
     if (env.GEMINI_API_KEY && !cfOnly) {
       const gm = want.startsWith('gemini-') ? [want] : await geminiModels(env);
-      for (const m of gm) tries.push([m, () => callGemini(m, prompt, env.GEMINI_API_KEY)]);
+      for (const m of gm) tries.push([m, () => callGemini(m, prompt, env.GEMINI_API_KEY, env)]);
     }
     const pick = CF_ALLOWED.includes(want) ? [want] : null;
     if (env.AI && !geminiOnly) for (const m of (cfOnly ? [want] : (pick || (env.AI_MODEL ? [env.AI_MODEL] : CF_MODELS)))) tries.push([m, () => callWorkersAI(m, prompt, env.AI)]);
