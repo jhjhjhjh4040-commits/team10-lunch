@@ -168,12 +168,14 @@ export default {
     const want = String(body?.model || '');
     const geminiOnly = want === 'gemini' || /^gemini-[\w.-]+$/.test(want);
     const tries = [];
-    if (env.GEMINI_API_KEY) {
+    /* 시험용: skipGemini=true + 허용 목록의 Cloudflare 모델이면 Gemini를 건너뛰고 그 모델만 씀 (모델 비교용) */
+    const cfOnly = body?.skipGemini === true && CF_ALLOWED.includes(want);
+    if (env.GEMINI_API_KEY && !cfOnly) {
       const gm = want.startsWith('gemini-') ? [want] : await geminiModels(env);
       for (const m of gm) tries.push([m, () => callGemini(m, prompt, env.GEMINI_API_KEY)]);
     }
     const pick = CF_ALLOWED.includes(want) ? [want] : null;
-    if (env.AI && !geminiOnly) for (const m of (pick || (env.AI_MODEL ? [env.AI_MODEL] : CF_MODELS))) tries.push([m, () => callWorkersAI(m, prompt, env.AI)]);
+    if (env.AI && !geminiOnly) for (const m of (cfOnly ? [want] : (pick || (env.AI_MODEL ? [env.AI_MODEL] : CF_MODELS)))) tries.push([m, () => callWorkersAI(m, prompt, env.AI)]);
     if (!tries.length) return json({ error: 'no_ai' }, 500, cors);
     let last = { error: 'upstream' };
     const failed = [];   // 앞에서 실패한 모델과 이유 (원인 확인용)
