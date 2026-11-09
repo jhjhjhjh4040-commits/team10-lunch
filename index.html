@@ -1988,7 +1988,7 @@ let sample = null, ctl = null, busy = false;
    비어 있으면 AI 없이 키워드 검색으로만 답함 */
 const AI_ENDPOINT = 'https://seohaelink.jhjhjhjh4040.workers.dev';
 /* 중계 서버에서 쓸 Cloudflare 무료 모델. 2026-11-06 모델 5개 비교에서 정확도·속도가 가장 나았던 모델 */
-const AI_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
+const AI_MODEL = '@cf/mistralai/mistral-small-3.1-24b-instruct'; // Gemini가 막히면 이 모델이 답함 (20문제 시험 20/20, 2.1초)
 const ERR = {
   not_granted:'Claude 사용을 허용해야 AI가 답할 수 있어요.',
   rate_limited:'요청이 많아요. 잠시 후 다시 눌러 주세요.',
